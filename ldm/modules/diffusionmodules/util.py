@@ -137,7 +137,10 @@ class CheckpointFunction(torch.autograd.Function):
             # Tensors.
             shallow_copies = [x.view_as(x) for x in ctx.input_tensors]
             print(f"bwd {[(t.shape, t.dtype) for t in shallow_copies]}")
-            output_tensors = ctx.run_function(*shallow_copies)
+
+            # hack - assumes amp is on
+            with torch.cuda.amp.autocast():
+                output_tensors = ctx.run_function(*shallow_copies)
         input_grads = torch.autograd.grad(
             output_tensors,
             ctx.input_tensors + ctx.input_params,
