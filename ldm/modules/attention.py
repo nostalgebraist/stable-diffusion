@@ -64,6 +64,15 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 
+class OAStyleLayerNorm(nn.LayerNorm):
+    """Subclass torch's LayerNorm to handle fp16."""
+
+    def forward(self, x: torch.Tensor):
+        orig_type = x.dtype
+        ret = super().forward(x.type(torch.float32))
+        return ret.type(orig_type)
+
+
 def zero_module(module):
     """
     Zero out the parameters of a module and return it.
@@ -200,9 +209,9 @@ class BasicTransformerBlock(nn.Module):
         self.ff = FeedForward(dim, dropout=dropout, glu=gated_ff)
         self.attn2 = CrossAttention(query_dim=dim, context_dim=context_dim,
                                     heads=n_heads, dim_head=d_head, dropout=dropout)  # is self-attn if context is none
-        self.norm1 = nn.LayerNorm(dim)
-        self.norm2 = nn.LayerNorm(dim)
-        self.norm3 = nn.LayerNorm(dim)
+        self.norm1 = OAStyleLayerNorm(dim)
+        self.norm2 = OAStyleLayerNorm(dim)
+        self.norm3 = OAStyleLayerNorm(dim)
         self.checkpoint = checkpoint
 
     def forward(self, x, context=None):
