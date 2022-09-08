@@ -189,6 +189,10 @@ class DDPM(pl.LightningModule):
             print(f"Missing Keys: {missing}")
         if len(unexpected) > 0:
             print(f"Unexpected Keys: {unexpected}")
+        if self.use_ema and any([k.startswith('model_ema') for k in missing]):
+            print("Recreating EMA")
+            del self.model_ema
+            self.model_ema = LitEma(self.model)
         return missing, unexpected
 
     def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
