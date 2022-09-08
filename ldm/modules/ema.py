@@ -3,7 +3,7 @@ from torch import nn
 
 
 class LitEma(nn.Module):
-    def __init__(self, model, decay=0.9999, use_num_upates=True):
+    def __init__(self, model, decay=0.9999, use_num_upates=True, use_arith_avg=True):
         super().__init__()
         if decay < 0.0 or decay > 1.0:
             raise ValueError('Decay must be between 0 and 1')
@@ -22,12 +22,17 @@ class LitEma(nn.Module):
 
         self.collected_params = []
 
+        self.use_arith_avg = use_arith_avg
+
     def forward(self,model):
         decay = self.decay
 
         if self.num_updates >= 0:
             self.num_updates += 1
-            decay = min(self.decay,(1 + self.num_updates) / (10 + self.num_updates))
+            if self.use_arith_avg:
+                decay = min(self.decay, 1 - 1 / (self.num_updates))
+            else:
+                decay = min(self.decay,(1 + self.num_updates) / (10 + self.num_updates))
 
         one_minus_decay = 1.0 - decay
 
