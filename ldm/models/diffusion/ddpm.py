@@ -189,7 +189,9 @@ class DDPM(pl.LightningModule):
             print(f"Missing Keys: {missing}")
         if len(unexpected) > 0:
             print(f"Unexpected Keys: {unexpected}")
-        if self.use_ema and any([k.startswith('model_ema') for k in missing]):
+        restart_ema = self.restart_ema and self.use_ema
+        restart_ema = restart_ema or any([k.startswith('model_ema') for k in missing])
+        if restart_ema:
             print("Recreating EMA")
             del self.model_ema
             self.model_ema = LitEma(self.model)
@@ -447,6 +449,7 @@ class LatentDiffusion(DDPM):
                  conditioning_key=None,
                  scale_factor=1.0,
                  scale_by_std=False,
+                 restart_ema=True,
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
