@@ -375,7 +375,8 @@ class DDPM(pl.LightningModule):
         self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
         self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
-    def training_step_end(self, *args, **kwargs):
+    def optimizer_step(self, *args, **kwargs):
+        super().optimizer_step(*args, **kwargs)
         if self.use_ema:
             self.model_ema(self.model)
 
