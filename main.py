@@ -375,7 +375,7 @@ class ImageLogger(Callback):
             try:
                 self.log_steps.pop(0)
             except IndexError as e:
-                print(e)
+                # print(e)
                 pass
             return True
         return False
