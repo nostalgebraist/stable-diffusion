@@ -683,7 +683,7 @@ class LatentDiffusion(DDPM):
             if cond_key is None:
                 cond_key = self.cond_stage_key
             if cond_key != self.first_stage_key:
-                if cond_key in ['caption', 'coordinates_bbox']:
+                if cond_key in ['caption', 'coordinates_bbox', 'txt']:
                     xc = batch[cond_key]
                 elif cond_key == 'class_label':
                     xc = batch
@@ -1275,7 +1275,7 @@ class LatentDiffusion(DDPM):
     def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=200, ddim_eta=1., return_keys=None,
                    quantize_denoised=True, inpaint=True, plot_denoise_rows=False, plot_progressive_rows=True,
                    plot_diffusion_rows=True,
-                   use_plms=True,
+                   use_plms=True, scale=1.0,
                    **kwargs):
 
         use_ddim = ddim_steps is not None
@@ -1300,7 +1300,7 @@ class LatentDiffusion(DDPM):
             if hasattr(self.cond_stage_model, "decode"):
                 xc = self.cond_stage_model.decode(c)
                 log["conditioning"] = xc
-            elif self.cond_stage_key in ["caption"]:
+            elif self.cond_stage_key in ["caption", "txt"]:
                 xc = log_txt_as_img((x.shape[2], x.shape[3]), batch[self.cond_stage_key])
                 log["conditioning"] = xc
             elif self.cond_stage_key == 'class_label':
