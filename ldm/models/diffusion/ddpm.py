@@ -1251,18 +1251,24 @@ class LatentDiffusion(DDPM):
                                   mask=mask, x0=x0)
 
     @torch.no_grad()
-    def sample_log(self,cond,batch_size,ddim, ddim_steps, use_plms, image_size, **kwargs):
+    def sample_log(self,cond,batch_size,ddim, ddim_steps, use_plms, image_size, scale=1.0, uc=None, **kwargs):
 
         if use_plms:
             ddim_sampler = PLMSSampler(self)
             shape = (self.channels, image_size, image_size)
             samples, intermediates =ddim_sampler.sample(ddim_steps,batch_size,
-                                                        shape,cond,verbose=False,**kwargs)
+                                                        shape,cond,verbose=False,
+                                                        unconditional_guidance_scale=scale,
+                                                        unconditional_conditioning=uc,
+                                                        **kwargs)
         elif ddim:
             ddim_sampler = DDIMSampler(self)
             shape = (self.channels, image_size, image_size)
             samples, intermediates =ddim_sampler.sample(ddim_steps,batch_size,
-                                                        shape,cond,verbose=False,**kwargs)
+                                                        shape,cond,verbose=False,
+                                                        unconditional_guidance_scale=scale,
+                                                        unconditional_conditioning=uc,
+                                                        **kwargs)
 
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,
@@ -1311,6 +1317,10 @@ class LatentDiffusion(DDPM):
             if ismap(xc):
                 log["original_conditioning"] = self.to_rgb(xc)
 
+        uc = None
+        if scale != 1.0:
+            uc = self.get_learned_conditioning(xc)
+
         if plot_diffusion_rows:
             # get diffusion row
             diffusion_row = list()
@@ -1334,7 +1344,8 @@ class LatentDiffusion(DDPM):
             with self.ema_scope("Plotting"):
                 samples, z_denoise_row = self.sample_log(cond=c,batch_size=N,ddim=use_ddim,
                                                          ddim_steps=ddim_steps,eta=ddim_eta,
-                                                         use_plms=use_plms, image_size=image_size)
+                                                         use_plms=use_plms, image_size=image_size,
+                                                         scale=scale, uc=uc,)
                 # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True)
             x_samples = self.decode_first_stage(samples)
             log["samples"] = x_samples
@@ -1349,6 +1360,7 @@ class LatentDiffusion(DDPM):
                     samples, z_denoise_row = self.sample_log(cond=c,batch_size=N,ddim=use_ddim,
                                                              ddim_steps=ddim_steps,eta=ddim_eta,
                                                              use_plms=use_plms, image_size=image_size,
+                                                             scale=scale, uc=uc,
                                                              quantize_denoised=True)
                     # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True,
                     #                                      quantize_denoised=True)
@@ -1365,7 +1377,8 @@ class LatentDiffusion(DDPM):
                 with self.ema_scope("Plotting Inpaint"):
 
                     samples, _ = self.sample_log(cond=c,batch_size=N,ddim=use_ddim, eta=ddim_eta,
-                    use_plms=use_plms, image_size=image_size,
+                                                use_plms=use_plms, image_size=image_size,
+                                                scale=scale, uc=uc,
                                                 ddim_steps=ddim_steps, x0=z[:N], mask=mask)
                 x_samples = self.decode_first_stage(samples.to(self.device))
                 log["samples_inpainting"] = x_samples
@@ -1375,6 +1388,7 @@ class LatentDiffusion(DDPM):
                 with self.ema_scope("Plotting Outpaint"):
                     samples, _ = self.sample_log(cond=c, batch_size=N, ddim=use_ddim,eta=ddim_eta,
                                                 use_plms=use_plms, image_size=image_size,
+                                                scale=scale, uc=uc,
                                                 ddim_steps=ddim_steps, x0=z[:N], mask=mask)
                 x_samples = self.decode_first_stage(samples.to(self.device))
                 log["samples_outpainting"] = x_samples
