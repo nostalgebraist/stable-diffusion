@@ -289,7 +289,8 @@ class SetupCallback(Callback):
 class ImageLogger(Callback):
     def __init__(self, batch_frequency, max_images, clamp=True, increase_log_steps=True,
                  rescale=True, disabled=False, log_on_batch_idx=False, log_first_step=False,
-                 log_images_kwargs=None):
+                 log_images_kwargs=None,
+                 pin_single_batch=False):
         super().__init__()
         self.rescale = rescale
         self.batch_freq = batch_frequency
@@ -305,6 +306,8 @@ class ImageLogger(Callback):
         self.log_on_batch_idx = log_on_batch_idx
         self.log_images_kwargs = log_images_kwargs if log_images_kwargs else {}
         self.log_first_step = log_first_step
+        self.pin_single_batch = pin_single_batch
+        self.single_batch = None
 
     @rank_zero_only
     def _testtube(self, pl_module, images, batch_idx, split):
@@ -349,8 +352,15 @@ class ImageLogger(Callback):
             if is_train:
                 pl_module.eval()
 
+            if self.pin_single_batch and self.single_batch is None:
+                self.single_batch = batch
+
+            run_batch = batch
+            if self.pin_single_batch:
+                run_batch = self.single_batch
+
             with torch.no_grad():
-                images = pl_module.log_images(batch, split=split, **self.log_images_kwargs)
+                images = pl_module.log_images(run_batch, split=split, **self.log_images_kwargs)
 
             for k in images:
                 N = min(images[k].shape[0], self.max_images)
