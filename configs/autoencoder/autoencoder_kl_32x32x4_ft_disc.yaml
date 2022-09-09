@@ -11,7 +11,7 @@ model:
       params:
         disc_start: 0
         kl_weight: 0.000001
-        disc_weight: 0.2
+        disc_weight: 0.5
         use_d: True
         disc_loss: "vanilla"
 
