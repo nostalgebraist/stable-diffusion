@@ -13,7 +13,7 @@ model:
         kl_weight: 0.000001
         disc_weight: 0.5
         use_d: True
-        disc_loss: "vanilla"
+        disc_loss: "hinge"
 
     ddconfig:
       double_z: True
