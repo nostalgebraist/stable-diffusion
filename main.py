@@ -308,6 +308,7 @@ class ImageLogger(Callback):
         self.log_first_step = log_first_step
         self.pin_single_batch = pin_single_batch
         self.single_batch = None
+        self.handled_steps = set()
 
     @rank_zero_only
     def _testtube(self, pl_module, images, batch_idx, split):
@@ -346,6 +347,7 @@ class ImageLogger(Callback):
                 hasattr(pl_module, "log_images") and
                 callable(pl_module.log_images) and
                 self.max_images > 0):
+            self.handled_steps.add(check_idx)
             logger = type(pl_module.logger)
 
             is_train = pl_module.training
@@ -381,7 +383,7 @@ class ImageLogger(Callback):
 
     def check_frequency(self, check_idx):
         if ((check_idx % self.batch_freq) == 0 or (check_idx in self.log_steps)) and (
-                check_idx > 0 or self.log_first_step):
+                check_idx > 0 or self.log_first_step) and (check_idx not in self.handled_steps):
             try:
                 self.log_steps.pop(0)
             except IndexError as e:
