@@ -9,7 +9,7 @@ class LPIPSWithDiscriminator(nn.Module):
                  disc_num_layers=3, disc_in_channels=3, disc_factor=1.0, disc_weight=1.0,
                  perceptual_weight=1.0, use_actnorm=False, disc_conditional=False,
                  disc_loss="hinge",
-                 gen_start=0):
+                 gen_start=0, beta1=0.5, beta2=0.9):
 
         super().__init__()
         assert disc_loss in ["hinge", "vanilla"]

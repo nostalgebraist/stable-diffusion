@@ -292,6 +292,8 @@ class AutoencoderKL(pl.LightningModule):
                  image_key="image",
                  colorize_nlabels=None,
                  monitor=None,
+                 beta1=0.5,
+                 beta2=0.9,
                  ):
         super().__init__()
         self.image_key = image_key
@@ -309,6 +311,7 @@ class AutoencoderKL(pl.LightningModule):
             self.monitor = monitor
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
+        self.betas = (beta1, beta2)
 
     def init_from_ckpt(self, path, ignore_keys=list()):
         sd = torch.load(path, map_location="cpu")["state_dict"]
@@ -389,9 +392,9 @@ class AutoencoderKL(pl.LightningModule):
                                   list(self.decoder.parameters())+
                                   list(self.quant_conv.parameters())+
                                   list(self.post_quant_conv.parameters()),
-                                  lr=lr, betas=(0.5, 0.9))
+                                  lr=lr, betas=self.betas)
         opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
-                                    lr=lr, betas=(0.5, 0.9))
+                                    lr=lr, betas=self.betas)
         return [opt_ae, opt_disc], []
 
     def get_last_layer(self):
