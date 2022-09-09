@@ -1,6 +1,7 @@
 import torch
 import pytorch_lightning as pl
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import LambdaLR
 from contextlib import contextmanager
 
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
