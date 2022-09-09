@@ -16,12 +16,12 @@ model:
     monitor: val/loss_simple_ema
     scale_factor: 0.18215
     use_ema: True
-    restart_ema: False
+    restart_ema: True
 
     scheduler_config: # 10000 warmup steps
       target: ldm.lr_scheduler.LambdaLinearScheduler
       params:
-        warm_up_steps: [ 1000 ]
+        warm_up_steps: [ 200 ]
         cycle_lengths: [ 10000000000000 ] # incredibly large number to prevent corner cases
         f_start: [ 1.e-6 ]
         f_max: [ 1. ]
