@@ -294,6 +294,7 @@ class AutoencoderKL(pl.LightningModule):
                  monitor=None,
                  beta1=0.5,
                  beta2=0.9,
+                 scheduler_config=None,
                  ):
         super().__init__()
         self.image_key = image_key
@@ -312,6 +313,10 @@ class AutoencoderKL(pl.LightningModule):
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
         self.betas = (beta1, beta2)
+
+        self.use_scheduler = scheduler_config is not None
+        if self.use_scheduler:
+            self.scheduler_config = scheduler_config
 
     def init_from_ckpt(self, path, ignore_keys=list()):
         sd = torch.load(path, map_location="cpu")["state_dict"]
@@ -393,9 +398,27 @@ class AutoencoderKL(pl.LightningModule):
                                   list(self.quant_conv.parameters())+
                                   list(self.post_quant_conv.parameters()),
                                   lr=lr, betas=self.betas)
-        opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
-                                    lr=lr, betas=self.betas)
-        return [opt_ae, opt_disc], []
+        opts = [opt_ae]
+        if self.loss.use_d:
+            opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
+                                        lr=lr, betas=self.betas)
+            opts.append(opt_disc)
+        if self.use_scheduler:
+            assert 'target' in self.scheduler_config
+            scheduler = instantiate_from_config(self.scheduler_config)
+
+            print("Setting up LambdaLR scheduler...")
+            scheduler = [
+                {
+                    'scheduler': LambdaLR(opt, lr_lambda=scheduler.schedule),
+                    'interval': 'step',
+                    'frequency': 1
+                }
+                for _ in opts
+            ]
+            return opts, scheduler
+
+        return opts, []
 
     def get_last_layer(self):
         return self.decoder.conv_out.weight

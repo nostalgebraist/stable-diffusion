@@ -9,7 +9,8 @@ class LPIPSWithDiscriminator(nn.Module):
                  disc_num_layers=3, disc_in_channels=3, disc_factor=1.0, disc_weight=1.0,
                  perceptual_weight=1.0, use_actnorm=False, disc_conditional=False,
                  disc_loss="hinge",
-                 gen_start=0, beta1=0.5, beta2=0.9):
+                 gen_start=0, beta1=0.5, beta2=0.9,
+                 use_d=True,):
 
         super().__init__()
         assert disc_loss in ["hinge", "vanilla"]
@@ -20,10 +21,13 @@ class LPIPSWithDiscriminator(nn.Module):
         # output log variance
         self.logvar = nn.Parameter(torch.ones(size=()) * logvar_init)
 
-        self.discriminator = NLayerDiscriminator(input_nc=disc_in_channels,
-                                                 n_layers=disc_num_layers,
-                                                 use_actnorm=use_actnorm
-                                                 ).apply(weights_init)
+        self.use_d = use_d
+
+        if self.use_d:
+            self.discriminator = NLayerDiscriminator(input_nc=disc_in_channels,
+                                                     n_layers=disc_num_layers,
+                                                     use_actnorm=use_actnorm
+                                                     ).apply(weights_init)
         self.generator_iter_start = gen_start
         self.discriminator_iter_start = disc_start
         self.disc_loss = hinge_d_loss if disc_loss == "hinge" else vanilla_d_loss
@@ -67,22 +71,27 @@ class LPIPSWithDiscriminator(nn.Module):
         # now the GAN part
         if optimizer_idx == 0:
             # generator update
-            if cond is None:
-                assert not self.disc_conditional
-                logits_fake = self.discriminator(reconstructions.contiguous())
-            else:
-                assert self.disc_conditional
-                logits_fake = self.discriminator(torch.cat((reconstructions.contiguous(), cond), dim=1))
-            g_loss = -torch.mean(logits_fake)
 
-            if self.disc_factor > 0.0:
-                try:
-                    d_weight = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
-                except RuntimeError:
-                    assert not self.training
-                    d_weight = torch.tensor(0.0)
-            else:
+            if not self.use_d:
                 d_weight = torch.tensor(0.0)
+                g_loss = torch.tensor(0.0)
+            else:
+                if cond is None:
+                    assert not self.disc_conditional
+                    logits_fake = self.discriminator(reconstructions.contiguous())
+                else:
+                    assert self.disc_conditional
+                    logits_fake = self.discriminator(torch.cat((reconstructions.contiguous(), cond), dim=1))
+                g_loss = -torch.mean(logits_fake)
+
+                if self.disc_factor > 0.0:
+                    try:
+                        d_weight = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
+                    except RuntimeError:
+                        assert not self.training
+                        d_weight = torch.tensor(0.0)
+                else:
+                    d_weight = torch.tensor(0.0)
 
             gen_factor = adopt_weight(1.0, global_step, threshold=self.generator_iter_start)
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
