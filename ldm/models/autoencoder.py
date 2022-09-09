@@ -415,7 +415,7 @@ class AutoencoderKL(pl.LightningModule):
                     'interval': 'step',
                     'frequency': 1
                 }
-                for _ in opts
+                for opt in opts
             ]
             return opts, scheduler
 
