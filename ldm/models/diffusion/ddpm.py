@@ -1319,7 +1319,7 @@ class LatentDiffusion(DDPM):
 
         uc = None
         if scale != 1.0:
-            uc = self.get_learned_conditioning(xc)
+            uc = self.get_learned_conditioning(N * [""])
 
         if plot_diffusion_rows:
             # get diffusion row
