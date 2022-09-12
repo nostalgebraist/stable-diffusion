@@ -54,10 +54,14 @@ class LPIPSWithDiscriminator(nn.Module):
     def forward(self, inputs, reconstructions, posteriors, optimizer_idx,
                 global_step, last_layer=None, cond=None, split="train",
                 weights=None):
-        rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
+        pixel_rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
+
         if self.perceptual_weight > 0:
             p_loss = self.perceptual_loss(inputs.contiguous(), reconstructions.contiguous())
-            rec_loss = rec_loss + self.perceptual_weight * p_loss
+        else:
+            p_loss = torch.zeros_like(pixel_rec_loss)
+
+        rec_loss = pixel_rec_loss + self.perceptual_weight * p_loss
 
         nll_loss = rec_loss / torch.exp(self.logvar) + self.logvar
         weighted_nll_loss = nll_loss
@@ -110,6 +114,8 @@ class LPIPSWithDiscriminator(nn.Module):
                    "{}/d_weight".format(split): d_weight.detach(),
                    "{}/disc_factor".format(split): torch.tensor(disc_factor),
                    "{}/g_loss".format(split): g_loss.detach().mean(),
+                   "{}/rec_loss_pixel".format(split): pixel_rec_loss.detach().mean(),
+                   "{}/rec_loss_prcpt".format(split): p_loss.detach().mean(),
                    }
             return loss, log
 
