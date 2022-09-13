@@ -1,7 +1,12 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from taming.modules.losses.vqperceptual import *  # TODO: taming dependency yes/no?
+
+
+def hinge_abs_loss(t1, t2, cut):
+    return F.relu(torch.abs(t1 - t2) - cut)
 
 
 class LPIPSWithDiscriminator(nn.Module):
@@ -12,6 +17,7 @@ class LPIPSWithDiscriminator(nn.Module):
                  gen_start=0, beta1=0.5, beta2=0.9,
                  use_d=True,
                  use_original_sum_calc=True,
+                 hinge_cut=0.0,
                  ):
 
         super().__init__()
@@ -37,6 +43,7 @@ class LPIPSWithDiscriminator(nn.Module):
         self.discriminator_weight = disc_weight
         self.disc_conditional = disc_conditional
         self.use_original_sum_calc = use_original_sum_calc
+        self.hinge_cut = hinge_cut
 
     def calculate_adaptive_weight(self, nll_loss, g_loss, last_layer=None):
         if last_layer is not None:
@@ -54,7 +61,10 @@ class LPIPSWithDiscriminator(nn.Module):
     def forward(self, inputs, reconstructions, posteriors, optimizer_idx,
                 global_step, last_layer=None, cond=None, split="train",
                 weights=None):
-        pixel_rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
+        if self.hinge_cut > 0.:
+            pixel_rec_loss = hinge_abs_loss(inputs.contiguous(), reconstructions.contiguous(), self.hinge_cut)
+        else:
+            pixel_rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
 
         if self.perceptual_weight > 0:
             p_loss = self.perceptual_loss(inputs.contiguous(), reconstructions.contiguous())
