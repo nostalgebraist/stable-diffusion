@@ -10,7 +10,7 @@ model:
       target: ldm.modules.losses.LPIPSWithDiscriminator
       params:
         disc_start: 500000
-        kl_weight: 0.0000002  # 1/5 of usual
+        kl_weight: 0.000000024  # 1/40 of usual
         disc_weight: 0.5
         use_d: False
         hinge_cut: 0.3
