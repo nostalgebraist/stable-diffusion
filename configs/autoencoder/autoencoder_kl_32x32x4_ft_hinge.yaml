@@ -1,0 +1,39 @@
+model:
+  base_learning_rate: 4.5e-6
+  target: ldm.models.autoencoder.AutoencoderKL
+  params:
+    monitor: "val/rec_loss"
+    embed_dim: 4
+    beta1: 0.9
+    beta2: 0.999
+    lossconfig:
+      target: ldm.modules.losses.LPIPSWithDiscriminator
+      params:
+        disc_start: 500000
+        kl_weight: 0.0000002  # 1/5 of usual
+        disc_weight: 0.5
+        use_d: False
+        hinge_cut: 0.3
+        perceptual_weight: 0.0
+
+    scheduler_config:
+      target: ldm.lr_scheduler.LambdaWarmUpCosineScheduler2
+      params:
+        warm_up_steps: [ 200, 0 ]
+        cycle_lengths: [ 8000, 10000000000000 ] # incredibly large number to prevent corner cases
+        f_start: [ 1.e-6, 0.1 ]
+        f_max: [ 1., 0.1 ]
+        f_min: [ 0.1, 0.1 ]
+        verbosity_interval: 100
+
+    ddconfig:
+      double_z: True
+      z_channels: 4
+      resolution: 256
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      ch_mult: [ 1,2,4,4 ]  # num_down = len(ch_mult)-1
+      num_res_blocks: 2
+      attn_resolutions: [ ]
+      dropout: 0.0
