@@ -89,8 +89,10 @@ class DDPM(pl.LightningModule):
         self.model = DiffusionWrapper(unet_config, conditioning_key)
         count_params(self.model, verbose=True)
         self.use_ema = use_ema
+        self.ema_decay = ema_decay
+        self.ema_warmup_rate = ema_warmup_rate
         if self.use_ema:
-            self.model_ema = LitEma(self.model, decay=ema_decay, warmup_rate=ema_warmup_rate)
+            self.model_ema = LitEma(self.model, decay=self.ema_decay, warmup_rate=self.ema_warmup_rate)
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
 
         self.use_scheduler = scheduler_config is not None
@@ -197,7 +199,7 @@ class DDPM(pl.LightningModule):
         if restart_ema:
             print("Recreating EMA")
             del self.model_ema
-            self.model_ema = LitEma(self.model)
+            self.model_ema = LitEma(self.model, decay=self.ema_decay, warmup_rate=self.ema_warmup_rate)
         return missing, unexpected
 
     def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
