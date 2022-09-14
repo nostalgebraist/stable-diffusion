@@ -54,6 +54,8 @@ class DDPM(pl.LightningModule):
                  load_only_unet=False,
                  monitor="val/loss",
                  use_ema=True,
+                 ema_decay=0.9999,
+                 ema_warmup_rate=2,
                  first_stage_key="image",
                  image_size=256,
                  channels=3,
@@ -88,7 +90,7 @@ class DDPM(pl.LightningModule):
         count_params(self.model, verbose=True)
         self.use_ema = use_ema
         if self.use_ema:
-            self.model_ema = LitEma(self.model)
+            self.model_ema = LitEma(self.model, decay=ema_decay, warmup_rate=ema_warmup_rate)
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
 
         self.use_scheduler = scheduler_config is not None
