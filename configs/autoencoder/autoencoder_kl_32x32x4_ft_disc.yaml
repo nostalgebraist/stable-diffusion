@@ -14,6 +14,7 @@ model:
         disc_weight: 25.0  # 50x usual
         use_d: True
         disc_loss: "hinge"
+        perceptual_weight: 0.0
 
     ddconfig:
       double_z: True
