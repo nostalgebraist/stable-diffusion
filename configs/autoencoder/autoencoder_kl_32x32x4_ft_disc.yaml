@@ -11,7 +11,7 @@ model:
       params:
         disc_start: 0
         kl_weight: 0.000001
-        disc_weight: 0.5
+        disc_weight: 5.0  # 10x usual
         use_d: True
         disc_loss: "hinge"
 
