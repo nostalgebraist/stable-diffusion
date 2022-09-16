@@ -53,10 +53,12 @@ class LPIPSWithDiscriminator(nn.Module):
             nll_grads = torch.autograd.grad(nll_loss, self.last_layer[0], retain_graph=True)[0]
             g_grads = torch.autograd.grad(g_loss, self.last_layer[0], retain_graph=True)[0]
 
-        d_weight = torch.norm(nll_grads) / (torch.norm(g_grads) + 1e-4)
+        gnorm_nll = torch.norm(nll_grads)
+        gnorm_g = torch.norm(g_grads)
+        d_weight = gnorm_nll / (gnorm_g + 1e-4)
         d_weight = torch.clamp(d_weight, 0.0, 1e4).detach()
         d_weight = d_weight * self.discriminator_weight
-        return d_weight
+        return d_weight, gnorm_nll.detach(), gnorm_g.detach()
 
     def forward(self, inputs, reconstructions, posteriors, optimizer_idx,
                 global_step, last_layer=None, cond=None, split="train",
@@ -107,12 +109,16 @@ class LPIPSWithDiscriminator(nn.Module):
 
                 if self.disc_factor > 0.0:
                     try:
-                        d_weight = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
+                        d_weight, gnorm_nll, gnorm_g = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
                     except RuntimeError:
                         assert not self.training
                         d_weight = torch.tensor(0.0)
+                        gnorm_nll = torch.tensor(0.0)
+                        gnorm_g = torch.tensor(0.0)
                 else:
                     d_weight = torch.tensor(0.0)
+                    gnorm_nll = torch.tensor(0.0)
+                    gnorm_g = torch.tensor(0.0)
 
             gen_factor = adopt_weight(1.0, global_step, threshold=self.generator_iter_start)
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
@@ -122,6 +128,8 @@ class LPIPSWithDiscriminator(nn.Module):
                    "{}/kl_loss".format(split): kl_loss.detach().mean(), "{}/nll_loss".format(split): nll_loss.detach().mean(),
                    "{}/rec_loss".format(split): rec_loss.detach().mean(),
                    "{}/d_weight".format(split): d_weight.detach(),
+                   "{}/d_gnorm_nll".format(split): gnorm_nll.detach(),
+                   "{}/d_gnorm_g".format(split): gnorm_g.detach(),
                    "{}/disc_factor".format(split): torch.tensor(disc_factor),
                    "{}/g_loss".format(split): g_loss.detach().mean(),
                    "{}/rec_loss_pixel".format(split): pixel_rec_loss.detach().mean(),
