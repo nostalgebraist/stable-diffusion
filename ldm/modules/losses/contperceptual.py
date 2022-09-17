@@ -88,7 +88,7 @@ class LPIPSWithDiscriminator(nn.Module):
             kl_loss = torch.sum(kl_loss) / kl_loss.shape[0]
         else:
             # reproduce sum calc for 256x256 res but auto scale loss terms at other sizes
-            scale_factor = (256 / nll_loss.shape[-1])
+            scale_factor = (256 / nll_loss.shape[-1]) ** 2
             nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
             weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
             kl_loss = scale_factor * torch.sum(kl_loss) / kl_loss.shape[0]
