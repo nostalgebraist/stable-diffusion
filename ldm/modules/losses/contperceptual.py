@@ -87,10 +87,11 @@ class LPIPSWithDiscriminator(nn.Module):
             nll_loss = torch.sum(nll_loss) / nll_loss.shape[0]
             kl_loss = torch.sum(kl_loss) / kl_loss.shape[0]
         else:
-            # 65536 = 256*256 -- reproduce sum calc for 256x256 res but auto scale loss terms at other sizes
-            nll_loss = 65536. * torch.mean(nll_loss)
-            weighted_nll_loss = 65536. * torch.mean(weighted_nll_loss)
-            kl_loss = 65536. * torch.mean(kl_loss)
+            # reproduce sum calc for 256x256 res but auto scale loss terms at other sizes
+            scale_factor = (256 / nll_loss.shape[-1])
+            nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
+            weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
+            kl_loss = scale_factor * torch.sum(kl_loss) / kl_loss.shape[0]
 
         # now the GAN part
         if optimizer_idx == 0:
