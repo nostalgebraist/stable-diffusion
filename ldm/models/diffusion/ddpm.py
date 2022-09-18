@@ -1316,6 +1316,10 @@ class LatentDiffusion(DDPM):
             elif self.cond_stage_key in ["caption", "txt"]:
                 xc = log_txt_as_img((x.shape[2], x.shape[3]), batch[self.cond_stage_key])
                 log["conditioning"] = xc
+            elif self.cond_stage_key in ["caption_transcription"]:
+                combined = [cc + ' | ' + ct for cc, ct in zip(*batch[self.cond_stage_key])]
+                xc = log_txt_as_img((x.shape[2], x.shape[3]), combined)
+                log["conditioning"] = xc
             elif self.cond_stage_key == 'class_label':
                 xc = log_txt_as_img((x.shape[2], x.shape[3]), batch["human_label"])
                 log['conditioning'] = xc
