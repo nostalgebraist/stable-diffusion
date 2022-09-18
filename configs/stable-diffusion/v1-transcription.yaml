@@ -9,7 +9,7 @@ model:
     timesteps: 1000
     first_stage_key: "jpg"
     cond_stage_key: "caption_transcription"
-    image_size: 48
+    image_size: 64
     channels: 4
     cond_stage_trainable: true
     conditioning_key: caption_transcription
@@ -31,7 +31,7 @@ model:
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:
-        image_size: 32 # unused
+        image_size: 48
         in_channels: 4
         out_channels: 4
         model_channels: 320
