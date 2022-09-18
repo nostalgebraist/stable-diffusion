@@ -218,8 +218,8 @@ class BasicTransformerBlock(nn.Module):
             self.norm2p5 = OAStyleLayerNorm(dim)
         self.checkpoint = checkpoint
 
-    def forward(self, x, context=None):
-        return checkpoint(self._forward, (x, context), self.parameters(), self.checkpoint)
+    def forward(self, x, context=None, transcription=None):
+        return checkpoint(self._forward, (x, context, transcription), self.parameters(), self.checkpoint)
 
     def _forward(self, x, context=None, transcription=None):
         x = self.attn1(self.norm1(x)) + x
