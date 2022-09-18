@@ -75,6 +75,8 @@ model:
       params:
           max_seq_len: 384
 
+          transcription_encoder_frozen: false
+
           transcription_encoder_config:
               depth: 4
               inner_dim: 512
