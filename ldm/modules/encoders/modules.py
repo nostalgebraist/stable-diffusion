@@ -247,7 +247,7 @@ class TranscriptionEncoder(AbstractEncoder):
     def forward(self, text):
         # TODO: support timestep input
         tokens = torch.as_tensor(tokenize(self.tokenizer, text), device=self.device)
-        outputs = self.encoder(input_ids=tokens)
+        outputs = self.encoder(tokens)
         return outputs
 
     def encode(self, text):
