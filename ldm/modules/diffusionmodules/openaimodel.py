@@ -573,6 +573,7 @@ class UNetModel(nn.Module):
                         ) if not use_spatial_transformer else st_cls(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            pos_emb_size=image_size//ds,
                             **st_kwargs,
                         )
                     )
@@ -630,6 +631,7 @@ class UNetModel(nn.Module):
             ) if not use_spatial_transformer else SpatialTransformer(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            pos_emb_size=image_size//ds,
                         ),
             ResBlock(
                 ch,
@@ -677,6 +679,7 @@ class UNetModel(nn.Module):
                         ) if not use_spatial_transformer else SpatialTransformer(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            pos_emb_size=image_size//ds,
                         )
                     )
                 if level and i == num_res_blocks:

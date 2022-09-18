@@ -7,6 +7,8 @@ from einops import rearrange, repeat
 
 from ldm.modules.diffusionmodules.util import checkpoint
 
+from improved_diffusion.nn import AxialPositionalEmbeddingShape
+
 
 def exists(val):
     return val is not None
@@ -203,7 +205,11 @@ class CrossAttention(nn.Module):
 
 
 class BasicTransformerBlock(nn.Module):
-    def __init__(self, dim, n_heads, d_head, dropout=0., context_dim=None, transcription_context_dim=None, gated_ff=True, checkpoint=True, ):
+    def __init__(
+        self, dim, n_heads, d_head, dropout=0., context_dim=None, transcription_context_dim=None, gated_ff=True,
+        pos_emb_size=None,
+        checkpoint=True,
+    ):
         super().__init__()
         self.attn1 = CrossAttention(query_dim=dim, heads=n_heads, dim_head=d_head, dropout=dropout)  # is a self-attention
         self.ff = FeedForward(dim, dropout=dropout, glu=gated_ff)
@@ -213,6 +219,7 @@ class BasicTransformerBlock(nn.Module):
         self.norm2 = OAStyleLayerNorm(dim)
         self.norm3 = OAStyleLayerNorm(dim)
         if transcription_context_dim is not None:
+            self.pos_emb = AxialPositionalEmbeddingShape(dim=dim, axial_shape=(pos_emb_size, pos_emb_size))
             self.attn2p5 = CrossAttention(query_dim=dim, context_dim=transcription_context_dim,
                                           heads=n_heads, dim_head=d_head, dropout=dropout)
             self.norm2p5 = OAStyleLayerNorm(dim)
@@ -225,7 +232,8 @@ class BasicTransformerBlock(nn.Module):
         x = self.attn1(self.norm1(x)) + x
         x = self.attn2(self.norm2(x), context=context) + x
         if hasattr(self, 'attn2p5'):
-            x = self.attn2p5(self.norm2p5(x), context=transcription) + x
+            pe = self.pos_emb(x.shape, device=x.device, dtype=x.dtype)
+            x = self.attn2p5(self.norm2p5(x + pe), context=transcription) + x
         x = self.ff(self.norm3(x)) + x
         return x
 
@@ -241,7 +249,8 @@ class SpatialTransformer(nn.Module):
     def __init__(self, in_channels, n_heads, d_head,
                  depth=1, dropout=0., context_dim=None,
                  transcription_context_dim=None,
-                 checkpoint=True):
+                 pos_emb_size=None,
+                 checkpoint=True,):
         super().__init__()
         self.in_channels = in_channels
         inner_dim = n_heads * d_head
@@ -258,6 +267,7 @@ class SpatialTransformer(nn.Module):
                 inner_dim, n_heads, d_head, dropout=dropout,
                 context_dim=context_dim,
                 transcription_context_dim=transcription_context_dim,
+                pos_emb_size=pos_emb_size,
                 checkpoint=checkpoint
             )
             for d in range(depth)]
