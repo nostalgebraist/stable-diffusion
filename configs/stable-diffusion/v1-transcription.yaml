@@ -15,7 +15,7 @@ model:
     conditioning_key: caption_transcription
     monitor: val/loss_simple_ema
     scale_factor: 0.18215
-    use_ema: True
+    use_ema: False
     restart_ema: False
     ema_warmup_rate: 4
 
