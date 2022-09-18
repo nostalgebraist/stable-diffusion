@@ -73,12 +73,10 @@ model:
     cond_stage_config:
       target: ldm.modules.encoders.modules.CaptionTranscriptionEncoder
       params:
-          max_seq_len: 384
-
           transcription_encoder_config:
+              max_seq_len: 384
               depth: 4
               inner_dim: 512
               ff_glu: true
               ff_mult: 3
               rel_pos_bias: true
-              
