@@ -208,6 +208,7 @@ class BasicTransformerBlock(nn.Module):
     def __init__(
         self, dim, n_heads, d_head, dropout=0., context_dim=None, transcription_context_dim=None, gated_ff=True,
         pos_emb_size=None,
+        use_pos_emb=False,
         checkpoint=True,
     ):
         super().__init__()
@@ -219,7 +220,8 @@ class BasicTransformerBlock(nn.Module):
         self.norm2 = OAStyleLayerNorm(dim)
         self.norm3 = OAStyleLayerNorm(dim)
         if transcription_context_dim is not None:
-            self.pos_emb = AxialPositionalEmbeddingShape(dim=dim, axial_shape=(pos_emb_size, pos_emb_size))
+            if use_pos_emb:
+                self.pos_emb = AxialPositionalEmbeddingShape(dim=dim, axial_shape=(pos_emb_size, pos_emb_size))
             self.attn2p5 = CrossAttention(query_dim=dim, context_dim=transcription_context_dim,
                                           heads=n_heads, dim_head=d_head, dropout=dropout)
             self.norm2p5 = OAStyleLayerNorm(dim)
@@ -232,8 +234,10 @@ class BasicTransformerBlock(nn.Module):
         x = self.attn1(self.norm1(x)) + x
         x = self.attn2(self.norm2(x), context=context) + x
         if hasattr(self, 'attn2p5'):
-            pe = self.pos_emb(x.shape, device=x.device, dtype=x.dtype)
-            x = self.attn2p5(self.norm2p5(x + pe), context=transcription) + x
+            x_in = x
+            if hasattr(self, 'pos_emb'):
+                x_in = x_in + self.pos_emb(x.shape, device=x.device, dtype=x.dtype)
+            x = self.attn2p5(self.norm2p5(x_in), context=transcription) + x
         x = self.ff(self.norm3(x)) + x
         return x
 

@@ -474,6 +474,7 @@ class UNetModel(nn.Module):
         legacy=True,
         transcription_attention_resolutions=tuple(),
         transcription_context_dim=None,
+        transcription_use_pos_emb=False,
     ):
         super().__init__()
         if use_spatial_transformer:
@@ -669,6 +670,7 @@ class UNetModel(nn.Module):
                     if ds in transcription_attention_resolutions:
                         st_cls = TranscriptionBlock
                         st_kwargs['transcription_context_dim'] = transcription_context_dim
+                        st_kwargs['use_pos_emb'] = transcription_use_pos_emb
                         st_kwargs['pos_emb_size'] = image_size//ds
 
                     layers.append(
