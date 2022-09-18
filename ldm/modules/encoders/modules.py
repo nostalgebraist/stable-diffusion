@@ -255,7 +255,8 @@ class TranscriptionEncoder(AbstractEncoder):
 
 
 class CaptionTranscriptionEncoder(AbstractEncoder):
-    def __init__(self, caption_config, transcription_encoder_config, device="cuda", ):
+    def __init__(self, transcription_encoder_config, caption_config=None, device="cuda", ):
+        caption_config = caption_config or {}
         self.caption_encoder = FrozenCLIPEmbedder(device=device, **caption_config)
         self.transcription_encoder = TranscriptionEncoder(
             device=device,
