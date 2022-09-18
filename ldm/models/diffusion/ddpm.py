@@ -1334,7 +1334,7 @@ class LatentDiffusion(DDPM):
                 uc_transcript = '<pad>' * (c['c_transcription'].shape[1] - 2)
                 uc = self.get_learned_conditioning((N * [""], N * [uc_transcript]))
             else:
-                uc = self.get_learned_conditioning((N * [""])
+                uc = self.get_learned_conditioning(N * [""])
 
         if plot_diffusion_rows:
             # get diffusion row
