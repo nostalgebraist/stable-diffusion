@@ -44,7 +44,7 @@ model:
         context_dim: 768
         use_checkpoint: False
         legacy: False
-        transcription_attention_resolutions: [ 1 ]
+        transcription_attention_resolutions: [ 4, 2, 1 ]
         transcription_context_dim: 512
 
     first_stage_config:
