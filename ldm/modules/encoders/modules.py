@@ -267,7 +267,7 @@ class CaptionTranscriptionEncoder(AbstractEncoder):
 
     def forward(self, inputs):
         caption, transcription = inputs
-        return {'c_caption': self.caption_encoder(caption), 'c_transcription': self.transcription_encoder(transcription)}
+        return {'c_crossattn': self.caption_encoder(caption), 'c_transcription': self.transcription_encoder(transcription)}
 
     def encode(self, inputs):
         return self(inputs)
