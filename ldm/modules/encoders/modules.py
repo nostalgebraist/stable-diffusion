@@ -232,7 +232,7 @@ class FrozenClipImageEmbedder(nn.Module):
 
 
 class TranscriptionEncoder(AbstractEncoder):
-    def __init__(self, device="cuda", max_seq_len, transcription_encoder_config):
+    def __init__(self, max_seq_len, transcription_encoder_config, device="cuda", ):
         super().__init__()
         self.tokenizer = load_tokenizer(max_seq_len=max_seq_len, legacy_padding_behavior=False, char_level=True)
         self.encoder = TextEncoder(tokenizer=self.tokenizer, max_seq_len=max_seq_len, **transcription_encoder_config)
@@ -255,7 +255,7 @@ class TranscriptionEncoder(AbstractEncoder):
 
 
 class CaptionTranscriptionEncoder(AbstractEncoder):
-    def __init__(self, device="cuda", caption_config, tokenizer_config, transcription_encoder_config):
+    def __init__(self, caption_config, tokenizer_config, transcription_encoder_config, device="cuda", ):
         self.caption_encoder = FrozenCLIPEmbedder(device=device, **caption_config)
         self.transcription_encoder = TranscriptionEncoder(
             device=device,
