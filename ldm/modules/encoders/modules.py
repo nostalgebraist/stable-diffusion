@@ -8,6 +8,9 @@ import kornia
 
 from ldm.modules.x_transformer import Encoder, TransformerWrapper  # TODO: can we directly rely on lucidrains code and simply add this as a reuirement? --> test
 
+from improved_diffusion.text_nn import TextEncoder
+from improved_diffusion.image_datasets import load_tokenizer, tokenize
+
 
 class AbstractEncoder(nn.Module):
     def __init__(self):
@@ -226,6 +229,46 @@ class FrozenClipImageEmbedder(nn.Module):
     def forward(self, x):
         # x is assumed to be in range [-1,1]
         return self.model.encode_image(self.preprocess(x))
+
+
+class TranscriptionEncoder(AbstractEncoder):
+    def __init__(self, device="cuda", max_seq_len, transcription_encoder_config):
+        super().__init__()
+        self.tokenizer = load_tokenizer(max_seq_len=max_seq_len, legacy_padding_behavior=False, char_level=True)
+        self.encoder = TextEncoder(tokenizer=self.tokenizer, max_seq_len=max_seq_len, **transcription_encoder_config)
+        self.device = device
+        self.freeze()
+
+    def freeze(self):
+        self.encoder = self.encoder.eval()
+        for param in self.parameters():
+            param.requires_grad = False
+
+    def forward(self, text):
+        # TODO: support timestep input
+        tokens = torch.as_tensor(tokenize(self.tokenizer, text), device=self.device)
+        outputs = self.encoder(input_ids=tokens)
+        return outputs
+
+    def encode(self, text):
+        return self(text)
+
+
+class CaptionTranscriptionEncoder(AbstractEncoder):
+    def __init__(self, device="cuda", caption_config, tokenizer_config, transcription_encoder_config):
+        self.caption_encoder = FrozenCLIPEmbedder(device=device, **caption_config)
+        self.transcription_encoder = TranscriptionEncoder(
+            device=device,
+            tokenizer_config=tokenizer_config,
+            transcription_encoder_config=transcription_encoder_config,
+        )
+
+    def forward(self, inputs):
+        caption, transcription = inputs
+        return {'caption': self.caption_encoder(caption), 'transcription': self.transcription_encoder(transcription)}
+
+    def encode(self, inputs):
+        return self(inputs)
 
 
 if __name__ == "__main__":

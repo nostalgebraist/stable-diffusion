@@ -71,16 +71,22 @@ class TimestepBlock(nn.Module):
         """
 
 
+class TranscriptionBlock(SpatialTransformer):
+    pass
+
+
 class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
     """
     A sequential module that passes timestep embeddings to the children that
     support it as an extra input.
     """
 
-    def forward(self, x, emb, context=None):
+    def forward(self, x, emb, context=None, transcription=None):
         for layer in self:
             if isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
+            elif isinstance(layer, TranscriptionBlock):
+                x = layer(x, transcription)
             elif isinstance(layer, SpatialTransformer):
                 x = layer(x, context)
             else:
@@ -466,6 +472,8 @@ class UNetModel(nn.Module):
         context_dim=None,                 # custom transformer support
         n_embed=None,                     # custom support for prediction of discrete ids into codebook of first stage vq model
         legacy=True,
+        transcription_attention_resolutions=None,
+        transcription_context_dim=None,
     ):
         super().__init__()
         if use_spatial_transformer:
@@ -556,6 +564,21 @@ class UNetModel(nn.Module):
                             use_new_attention_order=use_new_attention_order,
                         ) if not use_spatial_transformer else SpatialTransformer(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
+                            checkpoint=use_checkpoint,
+                        )
+                    )
+                if ds in transcription_attention_resolutions:
+                    if num_head_channels == -1:
+                        dim_head = ch // num_heads
+                    else:
+                        num_heads = ch // num_head_channels
+                        dim_head = num_head_channels
+                    if legacy:
+                        #num_heads = 1
+                        dim_head = ch // num_heads if use_spatial_transformer else num_head_channels
+                    layers.append(
+                        TranscriptionBlock(
+                            ch, num_heads, dim_head, depth=transformer_depth, context_dim=transcription_context_dim,
                             checkpoint=use_checkpoint,
                         )
                     )
@@ -710,7 +733,7 @@ class UNetModel(nn.Module):
         self.middle_block.apply(convert_module_to_f32)
         self.output_blocks.apply(convert_module_to_f32)
 
-    def forward(self, x, timesteps=None, context=None, y=None,**kwargs):
+    def forward(self, x, timesteps=None, context=None, y=None, transcription=None, **kwargs):
         """
         Apply the model to an input batch.
         :param x: an [N x C x ...] Tensor of inputs.
@@ -732,12 +755,12 @@ class UNetModel(nn.Module):
 
         h = x.type(self.dtype)
         for module in self.input_blocks:
-            h = module(h, emb, context)
+            h = module(h, emb, context, transcription)
             hs.append(h)
-        h = self.middle_block(h, emb, context)
+        h = self.middle_block(h, emb, context, transcription)
         for module in self.output_blocks:
             h = th.cat([h, hs.pop()], dim=1)
-            h = module(h, emb, context)
+            h = module(h, emb, context, transcription)
         h = h.type(x.dtype)
         if self.predict_codebook_ids:
             return self.id_predictor(h)
