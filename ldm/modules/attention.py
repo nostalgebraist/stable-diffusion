@@ -253,6 +253,7 @@ class SpatialTransformer(nn.Module):
     def __init__(self, in_channels, n_heads, d_head,
                  depth=1, dropout=0., context_dim=None,
                  transcription_context_dim=None,
+                 use_pos_emb=False,
                  pos_emb_size=None,
                  checkpoint=True,):
         super().__init__()
@@ -271,6 +272,7 @@ class SpatialTransformer(nn.Module):
                 inner_dim, n_heads, d_head, dropout=dropout,
                 context_dim=context_dim,
                 transcription_context_dim=transcription_context_dim,
+                use_pos_emb=use_pos_emb,
                 pos_emb_size=pos_emb_size,
                 checkpoint=checkpoint
             )
