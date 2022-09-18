@@ -472,7 +472,7 @@ class UNetModel(nn.Module):
         context_dim=None,                 # custom transformer support
         n_embed=None,                     # custom support for prediction of discrete ids into codebook of first stage vq model
         legacy=True,
-        transcription_attention_resolutions=None,
+        transcription_attention_resolutions=tuple(),
         transcription_context_dim=None,
     ):
         super().__init__()
