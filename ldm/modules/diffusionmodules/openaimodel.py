@@ -559,6 +559,11 @@ class UNetModel(nn.Module):
 
                     st_cls = SpatialTransformer
                     st_kwargs = dict()
+                    if ds in transcription_attention_resolutions:
+                        st_cls = TranscriptionBlock
+                        st_kwargs['transcription_context_dim'] = transcription_context_dim
+                        st_kwargs['use_pos_emb'] = transcription_use_pos_emb
+                        st_kwargs['pos_emb_size'] = image_size//ds
 
                     layers.append(
                         AttentionBlock(
@@ -609,6 +614,15 @@ class UNetModel(nn.Module):
         if legacy:
             #num_heads = 1
             dim_head = ch // num_heads if use_spatial_transformer else num_head_channels
+
+        st_cls = SpatialTransformer
+        st_kwargs = dict()
+        if ds in transcription_attention_resolutions:
+            st_cls = TranscriptionBlock
+            st_kwargs['transcription_context_dim'] = transcription_context_dim
+            st_kwargs['use_pos_emb'] = transcription_use_pos_emb
+            st_kwargs['pos_emb_size'] = image_size//ds
+
         self.middle_block = TimestepEmbedSequential(
             ResBlock(
                 ch,
@@ -624,9 +638,10 @@ class UNetModel(nn.Module):
                 num_heads=num_heads,
                 num_head_channels=dim_head,
                 use_new_attention_order=use_new_attention_order,
-            ) if not use_spatial_transformer else SpatialTransformer(
+            ) if not use_spatial_transformer else st_cls(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            **st_kwargs,
                         ),
             ResBlock(
                 ch,
