@@ -9,7 +9,7 @@ model:
     timesteps: 1000
     first_stage_key: "jpg"
     cond_stage_key: "caption_transcription"
-    image_size: 64
+    image_size: 48
     channels: 4
     cond_stage_trainable: true
     conditioning_key: caption_transcription
