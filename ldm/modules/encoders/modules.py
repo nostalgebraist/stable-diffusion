@@ -255,11 +255,12 @@ class TranscriptionEncoder(AbstractEncoder):
 
 
 class CaptionTranscriptionEncoder(AbstractEncoder):
-    def __init__(self, transcription_encoder_config, caption_config=None, device="cuda", ):
+    def __init__(self, max_seq_len, transcription_encoder_config, caption_config=None, device="cuda", ):
         super().__init__()
         caption_config = caption_config or {}
         self.caption_encoder = FrozenCLIPEmbedder(device=device, **caption_config)
         self.transcription_encoder = TranscriptionEncoder(
+            max_seq_len=max_seq_len,
             device=device,
             transcription_encoder_config=transcription_encoder_config,
         )
