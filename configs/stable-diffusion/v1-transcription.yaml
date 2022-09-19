@@ -15,9 +15,9 @@ model:
     conditioning_key: caption_transcription
     monitor: val/loss_simple_ema
     scale_factor: 0.18215
-    use_ema: False
+    use_ema: True
     restart_ema: False
-    ema_warmup_rate: 4
+    ema_warmup_rate: 10
 
     scheduler_config: # 10000 warmup steps
       target: ldm.lr_scheduler.LambdaLinearScheduler
