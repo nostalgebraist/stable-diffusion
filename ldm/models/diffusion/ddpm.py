@@ -1467,7 +1467,7 @@ class DiffusionWrapper(pl.LightningModule):
         self.conditioning_key = conditioning_key
         assert self.conditioning_key in [None, 'concat', 'crossattn', 'hybrid', 'adm', 'caption_transcription']
 
-    def forward(self, x, t, c_concat: list = None, c_crossattn: list = None, c_transcription: list = None):
+    def forward(self, x, t, c_concat: list = None, c_crossattn: list = None, c_transcription: list = None, c_transcription_mask: list = None):
         if self.conditioning_key is None:
             out = self.diffusion_model(x, t)
         elif self.conditioning_key == 'concat':
@@ -1477,7 +1477,7 @@ class DiffusionWrapper(pl.LightningModule):
             cc = torch.cat(c_crossattn, 1)
             out = self.diffusion_model(x, t, context=cc)
         elif self.conditioning_key == 'caption_transcription':
-            out = self.diffusion_model(x, t, context=c_crossattn, transcription=c_transcription)
+            out = self.diffusion_model(x, t, context=c_crossattn, transcription=c_transcription, transcription_mask=c_transcription_mask)
         elif self.conditioning_key == 'hybrid':
             xc = torch.cat([x] + c_concat, dim=1)
             cc = torch.cat(c_crossattn, 1)

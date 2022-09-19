@@ -86,7 +86,7 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
             if isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
             elif isinstance(layer, TranscriptionBlock):
-                x = layer(x, context, transcription)
+                x = layer(x, context, transcription, transcription_mask)
             elif isinstance(layer, SpatialTransformer):
                 x = layer(x, context)
             else:
@@ -749,7 +749,7 @@ class UNetModel(nn.Module):
         self.middle_block.apply(convert_module_to_f32)
         self.output_blocks.apply(convert_module_to_f32)
 
-    def forward(self, x, timesteps=None, context=None, y=None, transcription=None, **kwargs):
+    def forward(self, x, timesteps=None, context=None, y=None, transcription=None, transcription_mask=None, **kwargs):
         """
         Apply the model to an input batch.
         :param x: an [N x C x ...] Tensor of inputs.
@@ -771,12 +771,12 @@ class UNetModel(nn.Module):
 
         h = x.type(self.dtype)
         for module in self.input_blocks:
-            h = module(h, emb, context, transcription)
+            h = module(h, emb, context, transcription, transcription_mask)
             hs.append(h)
-        h = self.middle_block(h, emb, context, transcription)
+        h = self.middle_block(h, emb, context, transcription, transcription_mask)
         for module in self.output_blocks:
             h = th.cat([h, hs.pop()], dim=1)
-            h = module(h, emb, context, transcription)
+            h = module(h, emb, context, transcription, transcription_mask)
         h = h.type(x.dtype)
         if self.predict_codebook_ids:
             return self.id_predictor(h)

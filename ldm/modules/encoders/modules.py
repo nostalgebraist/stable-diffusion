@@ -249,7 +249,7 @@ class TranscriptionEncoder(AbstractEncoder):
         # TODO: support timestep input
         tokens = torch.as_tensor(tokenize(self.tokenizer, text), device=self.device)
         emb, attn_mask = self.encoder(tokens)
-        return emb
+        return emb, attn_mask
 
     def encode(self, text):
         return self(text)
@@ -269,7 +269,8 @@ class CaptionTranscriptionEncoder(AbstractEncoder):
 
     def forward(self, inputs):
         caption, transcription = inputs
-        return {'c_crossattn': self.caption_encoder(caption), 'c_transcription': self.transcription_encoder(transcription)}
+        emb, attn_mask = self.transcription_encoder(transcription)
+        return {'c_crossattn': self.caption_encoder(caption), 'c_transcription': emb, 'c_transcription_mask': attn_mask}
 
     def encode(self, inputs):
         return self(inputs)

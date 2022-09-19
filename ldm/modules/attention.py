@@ -233,17 +233,17 @@ class BasicTransformerBlock(nn.Module):
             self.norm2p5 = OAStyleLayerNorm(dim)
         self.checkpoint = checkpoint
 
-    def forward(self, x, context=None, transcription=None):
-        return checkpoint(self._forward, (x, context, transcription), self.parameters(), self.checkpoint)
+    def forward(self, x, context=None, transcription=None, transcription_mask=None):
+        return checkpoint(self._forward, (x, context, transcription, transcription_mask), self.parameters(), self.checkpoint)
 
-    def _forward(self, x, context=None, transcription=None):
+    def _forward(self, x, context=None, transcription=None, transcription_mask=None):
         x = self.attn1(self.norm1(x)) + x
         x = self.attn2(self.norm2(x), context=context) + x
         if hasattr(self, 'attn2p5'):
             x_in = x
             if hasattr(self, 'pos_emb'):
                 x_in = x_in + self.pos_emb(x.shape, device=x.device, dtype=x.dtype)
-            x = self.attn2p5(self.norm2p5(x_in), context=transcription) + x
+            x = self.attn2p5(self.norm2p5(x_in), context=transcription, mask=transcription_mask) + x
         x = self.ff(self.norm3(x)) + x
         return x
 
@@ -291,7 +291,7 @@ class SpatialTransformer(nn.Module):
                                               stride=1,
                                               padding=0))
 
-    def forward(self, x, context=None, transcription=None,):
+    def forward(self, x, context=None, transcription=None, transcription_mask=None):
         # note: if no context is given, cross-attention defaults to self-attention
         b, c, h, w = x.shape
         x_in = x
@@ -299,7 +299,7 @@ class SpatialTransformer(nn.Module):
         x = self.proj_in(x)
         x = rearrange(x, 'b c h w -> b (h w) c')
         for block in self.transformer_blocks:
-            x = block(x, context=context, transcription=transcription)
+            x = block(x, context=context, transcription=transcription, transcription_mask=transcription_mask)
         x = rearrange(x, 'b (h w) c -> b c h w', h=h, w=w)
         x = self.proj_out(x)
         return x + x_in
