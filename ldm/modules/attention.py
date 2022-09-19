@@ -161,7 +161,7 @@ class SpatialSelfAttention(nn.Module):
 
 
 class CrossAttention(nn.Module):
-    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0.):
+    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0., zero_init_out=False):
         super().__init__()
         inner_dim = dim_head * heads
         context_dim = default(context_dim, query_dim)
@@ -173,9 +173,13 @@ class CrossAttention(nn.Module):
         self.to_k = nn.Linear(context_dim, inner_dim, bias=False)
         self.to_v = nn.Linear(context_dim, inner_dim, bias=False)
 
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, query_dim),
-            nn.Dropout(dropout)
+        scaler = zero_module if zero_init_out else lambda x: x
+
+        self.to_out = scaler(
+            nn.Sequential(
+                nn.Linear(inner_dim, query_dim),
+                nn.Dropout(dropout)
+            )
         )
 
     def forward(self, x, context=None, mask=None):
@@ -224,11 +228,10 @@ class BasicTransformerBlock(nn.Module):
                 self.pos_emb = zero_module(
                     AxialPositionalEmbeddingShape(dim=dim, axial_shape=(pos_emb_size, pos_emb_size))
                     )
-            self.attn2p5 = zero_module(
-                CrossAttention(
-                    query_dim=dim, context_dim=transcription_context_dim,
-                    heads=n_heads, dim_head=d_head, dropout=dropout
-                )
+            self.attn2p5 = CrossAttention(
+                query_dim=dim, context_dim=transcription_context_dim,
+                heads=n_heads, dim_head=d_head, dropout=dropout,
+                zero_init_out=True,
             )
             self.norm2p5 = OAStyleLayerNorm(dim)
         self.checkpoint = checkpoint
