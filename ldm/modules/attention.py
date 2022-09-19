@@ -221,9 +221,15 @@ class BasicTransformerBlock(nn.Module):
         self.norm3 = OAStyleLayerNorm(dim)
         if transcription_context_dim is not None:
             if use_pos_emb:
-                self.pos_emb = AxialPositionalEmbeddingShape(dim=dim, axial_shape=(pos_emb_size, pos_emb_size))
-            self.attn2p5 = CrossAttention(query_dim=dim, context_dim=transcription_context_dim,
-                                          heads=n_heads, dim_head=d_head, dropout=dropout)
+                self.pos_emb = zero_module(
+                    AxialPositionalEmbeddingShape(dim=dim, axial_shape=(pos_emb_size, pos_emb_size))
+                    )
+            self.attn2p5 = zero_module(
+                CrossAttention(
+                    query_dim=dim, context_dim=transcription_context_dim,
+                    heads=n_heads, dim_head=d_head, dropout=dropout
+                )
+            )
             self.norm2p5 = OAStyleLayerNorm(dim)
         self.checkpoint = checkpoint
 
