@@ -28,7 +28,7 @@ def log_txt_as_img(wh, xc, size=10):
         lines = []
         orig_lines = xc[bi].split('\n')
         for ol in orig_lines:
-            lines.append("\n".join(ol[start:start + nc] for start in range(0, len(ol), nc))))
+            lines.append("\n".join(ol[start:start + nc] for start in range(0, len(ol), nc)))
         lines = "\n".join(orig_lines)
         # lines = "\n".join(xc[bi][start:start + nc] for start in range(0, len(xc[bi]), nc))
 
