@@ -1308,7 +1308,7 @@ class LatentDiffusion(DDPM):
         uc = None
         if scale != 1.0:
             if self.cond_stage_key == 'caption_transcription':
-                c, uc = self.get_caption_transcription_conditioning_for_guidance(*xc)
+                c, uc = self.get_caption_transcription_conditioning_for_guidance(*[e[:bs] for e in xc])
             else:
                 uc = self.get_learned_conditioning(N * [""])
 
