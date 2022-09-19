@@ -54,6 +54,15 @@ model:
           target: torch.nn.Identity
     cond_stage_config:
       target: torch.nn.Identity
+
+    scheduler_config:
+      target: ldm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [ 500 ]
+        cycle_lengths: [ 100000000000 ] # incredibly large number to prevent corner cases
+        f_start: [ 1.e-6 ]
+        f_max: [ 1. ]
+        f_min: [ 1. ]
 data:
   target: main.DataModuleFromConfig
   params:
