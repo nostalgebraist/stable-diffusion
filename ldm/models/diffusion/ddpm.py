@@ -1331,11 +1331,7 @@ class LatentDiffusion(DDPM):
         uc = None
         if scale != 1.0:
             if self.cond_stage_key == 'caption_transcription':
-                ntok = c['c_transcription'].shape[1]
-                nmask = min(4, ntok - 2)
-                npad = ntok - 2 - nmask
-                uc_transcript = nmask * '<mask>' + npad * '<pad>'
-                uc = self.get_learned_conditioning((N * [""], N * [uc_transcript]))
+                c, uc = self.get_caption_transcription_conditioning_for_guidance(*xc)
             else:
                 uc = self.get_learned_conditioning(N * [""])
 
@@ -1458,6 +1454,27 @@ class LatentDiffusion(DDPM):
         x = nn.functional.conv2d(x, weight=self.colorize)
         x = 2. * (x - x.min()) / (x.max() - x.min()) - 1.
         return x
+
+    def get_caption_transcription_conditioning_for_guidance(
+        self, captions, transcriptions,
+        caption_drop_string="",
+        transcription_drop_string="<mask><mask><mask><mask>",
+    ):
+        bs = len(captions)
+
+        uc_captions = bs * [caption_drop_string]
+        uc_transcriptions = bs * [transcription_drop_string]
+
+        full_in = (captions + uc_captions, transcriptions + uc_transcriptions)
+
+        full_c = self.get_learned_conditioning(full_in)
+
+        c, uc = {}, {}
+
+        for k in full_c:
+            c[k], uc[k] = torch.split(full_c[k], bs)
+
+        return c, uc
 
 
 class DiffusionWrapper(pl.LightningModule):
