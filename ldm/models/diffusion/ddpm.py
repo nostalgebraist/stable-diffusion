@@ -1305,6 +1305,13 @@ class LatentDiffusion(DDPM):
         print(f"z shape: {z.shape}")
         image_size = z.shape[-1]
 
+        uc = None
+        if scale != 1.0:
+            if self.cond_stage_key == 'caption_transcription':
+                c, uc = self.get_caption_transcription_conditioning_for_guidance(*xc)
+            else:
+                uc = self.get_learned_conditioning(N * [""])
+
         N = min(x.shape[0], N)
         n_row = min(x.shape[0], n_row)
         log["inputs"] = x
@@ -1327,13 +1334,6 @@ class LatentDiffusion(DDPM):
                 log["conditioning"] = xc
             if ismap(xc):
                 log["original_conditioning"] = self.to_rgb(xc)
-
-        uc = None
-        if scale != 1.0:
-            if self.cond_stage_key == 'caption_transcription':
-                c, uc = self.get_caption_transcription_conditioning_for_guidance(*xc)
-            else:
-                uc = self.get_learned_conditioning(N * [""])
 
         if plot_diffusion_rows:
             # get diffusion row
