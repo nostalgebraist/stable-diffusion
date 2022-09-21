@@ -17,6 +17,7 @@ class LPIPSWithDiscriminator(nn.Module):
                  gen_start=0, beta1=0.5, beta2=0.9,
                  use_d=True,
                  use_original_sum_calc=False,
+                 scale_g_loss=True,
                  hinge_cut=0.0,
                  ):
 
@@ -43,6 +44,7 @@ class LPIPSWithDiscriminator(nn.Module):
         self.discriminator_weight = disc_weight
         self.disc_conditional = disc_conditional
         self.use_original_sum_calc = use_original_sum_calc
+        self.scale_g_loss = scale_g_loss
         self.hinge_cut = hinge_cut
 
     def calculate_adaptive_weight(self, nll_loss, g_loss, last_layer=None):
@@ -82,16 +84,18 @@ class LPIPSWithDiscriminator(nn.Module):
 
         kl_loss = posteriors.kl()
 
-        if self.use_original_sum_calc:
-            weighted_nll_loss = torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
-            nll_loss = torch.sum(nll_loss) / nll_loss.shape[0]
-            kl_loss = torch.sum(kl_loss) / kl_loss.shape[0]
-        else:
+        scale_factor = 1.0
+        if not self.use_original_sum_calc:
             # reproduce sum calc for 256x256 res but auto scale loss terms at other sizes
             scale_factor = (256 / nll_loss.shape[-1]) ** 2
-            nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
-            weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
-            kl_loss = scale_factor * torch.sum(kl_loss) / kl_loss.shape[0]
+
+        g_scale_factor = 1.0
+        if self.scale_g_loss:
+            g_scale_factor = scale_factor * (nll_loss.shape[1] * nll_loss.shape[2] * nll_loss.shape[3])
+
+        nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
+        weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
+        kl_loss = scale_factor * torch.sum(kl_loss) / kl_loss.shape[0]
 
         # now the GAN part
         if optimizer_idx == 0:
@@ -107,7 +111,7 @@ class LPIPSWithDiscriminator(nn.Module):
                 else:
                     assert self.disc_conditional
                     logits_fake = self.discriminator(torch.cat((reconstructions.contiguous(), cond), dim=1))
-                g_loss = -torch.mean(logits_fake)
+                g_loss = g_scale_factor * -torch.mean(logits_fake)
 
                 if self.disc_factor > 0.0:
                     try:
