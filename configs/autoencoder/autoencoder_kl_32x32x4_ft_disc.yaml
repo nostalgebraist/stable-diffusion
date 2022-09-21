@@ -11,7 +11,7 @@ model:
       params:
         disc_start: 0
         kl_weight: 0.000001
-        disc_weight: 0.01  # 1/50 of normal
+        disc_weight: 0.005  # 1/100 of normal
 
     ddconfig:
       double_z: True
