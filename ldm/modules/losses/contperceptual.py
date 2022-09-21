@@ -79,6 +79,7 @@ class LPIPSWithDiscriminator(nn.Module):
         rec_loss = pixel_rec_loss + self.perceptual_weight * p_loss
 
         nll_loss = rec_loss / torch.exp(self.logvar) + self.logvar
+        nll_loss = nll_loss.float()
         weighted_nll_loss = nll_loss
         if weights is not None:
             weighted_nll_loss = weights*nll_loss
@@ -112,6 +113,7 @@ class LPIPSWithDiscriminator(nn.Module):
                 else:
                     assert self.disc_conditional
                     logits_fake = self.discriminator(torch.cat((reconstructions.contiguous(), cond), dim=1))
+                logits_fake = logits_fake.float()
                 g_loss = -torch.mean(logits_fake)
 
                 if self.disc_factor > 0.0:
@@ -156,6 +158,8 @@ class LPIPSWithDiscriminator(nn.Module):
             else:
                 logits_real = self.discriminator(torch.cat((inputs.contiguous().detach(), cond), dim=1))
                 logits_fake = self.discriminator(torch.cat((reconstructions.contiguous().detach(), cond), dim=1))
+
+            logits_real, logits_fake = logits_real.float(), logits_fake.float()
 
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
             d_loss = disc_factor * self.disc_loss(logits_real, logits_fake)
