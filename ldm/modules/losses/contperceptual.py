@@ -58,6 +58,7 @@ class LPIPSWithDiscriminator(nn.Module):
         gnorm_g = torch.norm(g_grads)
         gnorm_g = g_scale_factor * torch.norm(g_grads).detach().float()
         d_weight = gnorm_nll / (gnorm_g + 1e-4)
+        d_weight = torch.isfinite(d_weight).float() * d_weight
         d_weight = torch.clamp(d_weight, 0.0, 1e4).detach()
         d_weight = d_weight * self.discriminator_weight
         return d_weight, gnorm_nll.detach(), gnorm_g.detach()
