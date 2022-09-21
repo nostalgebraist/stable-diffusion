@@ -102,10 +102,11 @@ class LPIPSWithDiscriminator(nn.Module):
         if self.reduce_all:
             scale_factor = 1.0
             g_scale_factor = 1.0
+            kl_scale_factor = 1. / (nll_loss.shape[1] * nll_loss.shape[2] * nll_loss.shape[3])
 
             nll_loss = scale_factor * torch.mean(nll_loss)
             weighted_nll_loss = scale_factor * torch.mean(weighted_nll_loss)
-            kl_loss = scale_factor * torch.mean(kl_loss)
+            kl_loss = kl_scale_factor * scale_factor * torch.mean(kl_loss)
         else:
             nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
             weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
