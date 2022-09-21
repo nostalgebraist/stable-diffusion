@@ -12,6 +12,8 @@ model:
         disc_start: 0
         kl_weight: 0.000001
         disc_weight: 0.1  # 1/5 of normal
+        scale_g_loss: true
+        reduce_all: true
 
     ddconfig:
       double_z: True
