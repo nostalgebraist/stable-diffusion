@@ -20,7 +20,6 @@ class LPIPSWithDiscriminator(nn.Module):
                  scale_g_loss=True,
                  hinge_cut=0.0,
                  ):
-
         super().__init__()
         assert disc_loss in ["hinge", "vanilla"]
         self.kl_weight = kl_weight
@@ -47,7 +46,7 @@ class LPIPSWithDiscriminator(nn.Module):
         self.scale_g_loss = scale_g_loss
         self.hinge_cut = hinge_cut
 
-    def calculate_adaptive_weight(self, nll_loss, g_loss, last_layer=None):
+    def calculate_adaptive_weight(self, nll_loss, g_loss, last_layer=None, g_scale_factor=1.0):
         if last_layer is not None:
             nll_grads = torch.autograd.grad(nll_loss, last_layer, retain_graph=True)[0]
             g_grads = torch.autograd.grad(g_loss, last_layer, retain_graph=True)[0]
@@ -56,7 +55,7 @@ class LPIPSWithDiscriminator(nn.Module):
             g_grads = torch.autograd.grad(g_loss, self.last_layer[0], retain_graph=True)[0]
 
         gnorm_nll = torch.norm(nll_grads)
-        gnorm_g = torch.norm(g_grads)
+        gnorm_g = g_scale_factor * torch.norm(g_grads)
         d_weight = gnorm_nll / (gnorm_g + 1e-4)
         d_weight = torch.clamp(d_weight, 0.0, 1e4).detach()
         d_weight = d_weight * self.discriminator_weight
@@ -111,11 +110,13 @@ class LPIPSWithDiscriminator(nn.Module):
                 else:
                     assert self.disc_conditional
                     logits_fake = self.discriminator(torch.cat((reconstructions.contiguous(), cond), dim=1))
-                g_loss = g_scale_factor * -torch.mean(logits_fake)
+                g_loss = -torch.mean(logits_fake)
 
                 if self.disc_factor > 0.0:
                     try:
-                        d_weight, gnorm_nll, gnorm_g = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
+                        d_weight, gnorm_nll, gnorm_g = self.calculate_adaptive_weight(
+                            nll_loss, g_loss, last_layer=last_layer, g_scale_factor=g_scale_factor,
+                        )
                     except RuntimeError:
                         assert not self.training
                         d_weight = torch.tensor(0.0)
@@ -128,7 +129,7 @@ class LPIPSWithDiscriminator(nn.Module):
 
             gen_factor = adopt_weight(1.0, global_step, threshold=self.generator_iter_start)
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
-            loss = gen_factor * (weighted_nll_loss + self.kl_weight * kl_loss + d_weight * disc_factor * g_loss)
+            loss = gen_factor * (weighted_nll_loss + self.kl_weight * kl_loss + d_weight * disc_factor * g_scale_factor * g_loss)
 
             log = {"{}/total_loss".format(split): loss.clone().detach().mean(), "{}/logvar".format(split): self.logvar.detach(),
                    "{}/kl_loss".format(split): kl_loss.detach().mean(), "{}/nll_loss".format(split): nll_loss.detach().mean(),
