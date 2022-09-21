@@ -55,7 +55,10 @@ class LPIPSWithDiscriminator(nn.Module):
             g_grads = torch.autograd.grad(g_loss, self.last_layer[0], retain_graph=True)[0]
 
         gnorm_nll = torch.norm(nll_grads)
-        gnorm_g = g_scale_factor * torch.norm(g_grads)
+        gnorm_g = torch.norm(g_grads)
+        print(("gnorm_g scale o", gnorm_g))
+        gnorm_g = g_scale_factor * torch.norm(g_grads).detach().float()
+        print(("gnorm_g scale +", gnorm_g))
         d_weight = gnorm_nll / (gnorm_g + 1e-4)
         d_weight = torch.clamp(d_weight, 0.0, 1e4).detach()
         d_weight = d_weight * self.discriminator_weight
