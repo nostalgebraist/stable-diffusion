@@ -17,7 +17,8 @@ class LPIPSWithDiscriminator(nn.Module):
                  gen_start=0, beta1=0.5, beta2=0.9,
                  use_d=True,
                  use_original_sum_calc=False,
-                 scale_g_loss=True,
+                 scale_g_loss=False,
+                 reduce_all=False,
                  hinge_cut=0.0,
                  ):
         super().__init__()
@@ -42,8 +43,11 @@ class LPIPSWithDiscriminator(nn.Module):
         self.disc_factor = disc_factor
         self.discriminator_weight = disc_weight
         self.disc_conditional = disc_conditional
+
         self.use_original_sum_calc = use_original_sum_calc
         self.scale_g_loss = scale_g_loss
+        self.reduce_all = reduce_all
+
         self.hinge_cut = hinge_cut
 
     def calculate_adaptive_weight(self, nll_loss, g_loss, last_layer=None, g_scale_factor=1.0):
@@ -95,9 +99,17 @@ class LPIPSWithDiscriminator(nn.Module):
         if self.scale_g_loss:
             g_scale_factor = scale_factor * (nll_loss.shape[1] * nll_loss.shape[2] * nll_loss.shape[3])
 
-        nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
-        weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
-        kl_loss = scale_factor * torch.sum(kl_loss) / kl_loss.shape[0]
+        if self.reduce_all:
+            scale_factor = 1.0
+            g_scale_factor = 1.0
+
+            nll_loss = scale_factor * torch.mean(nll_loss)
+            weighted_nll_loss = scale_factor * torch.mean(weighted_nll_loss)
+            kl_loss = scale_factor * torch.mean(kl_loss)
+        else:
+            nll_loss = scale_factor * torch.sum(nll_loss) / nll_loss.shape[0]
+            weighted_nll_loss = scale_factor * torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
+            kl_loss = scale_factor * torch.sum(kl_loss) / kl_loss.shape[0]
 
         # now the GAN part
         if optimizer_idx == 0:
