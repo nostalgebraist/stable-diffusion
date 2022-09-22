@@ -454,7 +454,7 @@ class LatentDiffusion(DDPM):
                  conditioning_key=None,
                  scale_factor=1.0,
                  scale_by_std=False,
-                 restart_ema=True,
+                 restart_ema=False,
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
