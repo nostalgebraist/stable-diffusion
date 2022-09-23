@@ -198,6 +198,11 @@ class PLMSSampler(object):
                 else:
                     c_in = torch.cat([*unconditional_conditioning, c])
 
+                stages = self.model.apply_model(x_in, t_in, c_in).chunk(n_stages)
+                e_t = stages[0]  # fully uncond
+                for scale, stage1, stage2 in zip(unconditional_guidance_scale, stages[:-1], stages[1:]):
+                    e_t = e_t + scale * (stage2 - stage1)
+
             if score_corrector is not None:
                 assert self.model.parameterization == "eps"
                 e_t = score_corrector.modify_score(self.model, e_t, x, t, c, **corrector_kwargs)

@@ -194,7 +194,6 @@ class DDIMSampler(object):
             e_t = stages[0]  # fully uncond
             for scale, stage1, stage2 in zip(unconditional_guidance_scale, stages[:-1], stages[1:]):
                 e_t = e_t + scale * (stage2 - stage1)
-            # e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
 
         if score_corrector is not None:
             assert self.model.parameterization == "eps"
