@@ -1476,17 +1476,15 @@ class LatentDiffusion(DDPM):
 
         full_c = self.get_learned_conditioning(full_in)
 
-        c, uc = {}, {}
+        c, uc = {}, [{}] * (1 + include_caption_only_step)
 
         for k in full_c:
             segments = torch.split(full_c[k], bs)
             c[k] = segments[0]
-            uc[k] = segments[1:]
+            for j, uc_segment in enumerate(segments[1:]):
+                uc[j][k] = uc_segment
 
-            if len(uc[k]) == 1:
-                uc[k] = uc[k][0]
-
-        return c, uc
+        return c, tuple(uc)
 
 
 class DiffusionWrapper(pl.LightningModule):
