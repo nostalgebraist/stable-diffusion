@@ -169,8 +169,6 @@ class DDIMSampler(object):
                       unconditional_guidance_scale=1., unconditional_conditioning=None):
         b, *_, device = *x.shape, x.device
 
-        pass  # just making my syntax highlighter work properly
-
         if isinstance(unconditional_guidance_scale, float) or isinstance(unconditional_guidance_scale, int):
             unconditional_guidance_scale = (unconditional_guidance_scale,)
 

@@ -175,18 +175,27 @@ class PLMSSampler(object):
                       unconditional_guidance_scale=1., unconditional_conditioning=None, old_eps=None, t_next=None):
         b, *_, device = *x.shape, x.device
 
+        if isinstance(unconditional_guidance_scale, float) or isinstance(unconditional_guidance_scale, int):
+            unconditional_guidance_scale = (unconditional_guidance_scale,)
+
         def get_model_output(x, t):
-            if unconditional_conditioning is None or unconditional_guidance_scale == 1.:
+            if unconditional_conditioning is None or unconditional_guidance_scale == (1.,):
                 e_t = self.model.apply_model(x, t, c)
             else:
-                x_in = torch.cat([x] * 2)
-                t_in = torch.cat([t] * 2)
+                if isinstance(unconditional_conditioning, dict):
+                    unconditional_conditioning = (unconditional_conditioning,)
+
+                n_guidance_scales = len(unconditional_conditioning)
+                n_stages = n_guidance_scales + 1
+                assert len(unconditional_guidance_scale) == n_guidance_scales
+
+                x_in = torch.cat([x] * n_stages)
+                t_in = torch.cat([t] * n_stages)
+
                 if isinstance(c, dict):
-                    c_in = {k: torch.cat([unconditional_conditioning[k], c[k]]) for k in c}
+                    c_in = {k: torch.cat(list(map(itemgetter(k), [*unconditional_conditioning, c]))) for k in c}
                 else:
-                    c_in = torch.cat([unconditional_conditioning, c])
-                e_t_uncond, e_t = self.model.apply_model(x_in, t_in, c_in).chunk(2)
-                e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
+                    c_in = torch.cat([*unconditional_conditioning, c])
 
             if score_corrector is not None:
                 assert self.model.parameterization == "eps"
