@@ -296,6 +296,7 @@ class AutoencoderKL(pl.LightningModule):
                  beta1=0.5,
                  beta2=0.9,
                  scheduler_config=None,
+                 decouple_d_g_steps=False,
                  ):
         super().__init__()
         self.image_key = image_key
@@ -318,6 +319,8 @@ class AutoencoderKL(pl.LightningModule):
         self.use_scheduler = scheduler_config is not None
         if self.use_scheduler:
             self.scheduler_config = scheduler_config
+
+        self.decouple_d_g_steps = decouple_d_g_steps
 
     def init_from_ckpt(self, path, ignore_keys=list()):
         sd = torch.load(path, map_location="cpu")["state_dict"]
@@ -404,6 +407,7 @@ class AutoencoderKL(pl.LightningModule):
             opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
                                         lr=lr, betas=self.betas)
             opts.append(opt_disc)
+        scheduler = []
         if self.use_scheduler:
             assert 'target' in self.scheduler_config
             scheduler = instantiate_from_config(self.scheduler_config)
@@ -417,9 +421,15 @@ class AutoencoderKL(pl.LightningModule):
                 }
                 for opt in opts
             ]
-            return opts, scheduler
 
-        return opts, []
+        if self.decouple_d_g_steps:
+            opts_dicts = [
+                {"optimizer": opt, "frequency": 1}
+                for opt in opts
+            ]
+            for entry, sched in zip(opts_dicts, scheduler):
+                entry["lr_scheduler"] = sched
+        return opts, scheduler
 
     def get_last_layer(self):
         return self.decoder.conv_out.weight
