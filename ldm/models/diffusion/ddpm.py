@@ -1459,20 +1459,32 @@ class LatentDiffusion(DDPM):
         self, captions, transcriptions,
         caption_drop_string="",
         transcription_drop_string="<mask><mask><mask><mask>",
+        include_caption_only_step=False
     ):
         bs = len(captions)
 
         uc_captions = bs * [caption_drop_string]
         uc_transcriptions = bs * [transcription_drop_string]
 
-        full_in = (captions + uc_captions, transcriptions + uc_transcriptions)
+        if include_caption_only_step:
+            full_in = (
+                captions + captions + uc_captions,
+                transcriptions + uc_transcriptions + uc_transcriptions
+            )
+        else:
+            full_in = (captions + uc_captions, transcriptions + uc_transcriptions)
 
         full_c = self.get_learned_conditioning(full_in)
 
         c, uc = {}, {}
 
         for k in full_c:
-            c[k], uc[k] = torch.split(full_c[k], bs)
+            segments = torch.split(full_c[k], bs)
+            c[k] = segments[0]
+            uc[k] = segments[1:]
+
+            if len(uc[k]) == 1:
+                uc[k] = uc[k][0]
 
         return c, uc
 
