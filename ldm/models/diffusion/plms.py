@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from functools import partial
+from operator import itemgetter
 
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like
 
@@ -171,20 +172,20 @@ class PLMSSampler(object):
 
     @torch.no_grad()
     def p_sample_plms(self, x, c, t, index, repeat_noise=False, use_original_steps=False, quantize_denoised=False,
-                      temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
-                      unconditional_guidance_scale=1., unconditional_conditioning=None, old_eps=None, t_next=None):
+                        temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
+                        unconditional_guidance_scale=1., unconditional_conditioning=None, old_eps=None, t_next=None):
         b, *_, device = *x.shape, x.device
 
         if isinstance(unconditional_guidance_scale, float) or isinstance(unconditional_guidance_scale, int):
             unconditional_guidance_scale = (unconditional_guidance_scale,)
 
+        if isinstance(unconditional_conditioning, dict):
+            unconditional_conditioning = (unconditional_conditioning,)
+
         def get_model_output(x, t):
             if unconditional_conditioning is None or unconditional_guidance_scale == (1.,):
                 e_t = self.model.apply_model(x, t, c)
             else:
-                if isinstance(unconditional_conditioning, dict):
-                    unconditional_conditioning = (unconditional_conditioning,)
-
                 n_guidance_scales = len(unconditional_conditioning)
                 n_stages = n_guidance_scales + 1
                 assert len(unconditional_guidance_scale) == n_guidance_scales
