@@ -429,6 +429,7 @@ class AutoencoderKL(pl.LightningModule):
             ]
             for entry, sched in zip(opts_dicts, scheduler):
                 entry["lr_scheduler"] = sched
+            return opts_dicts
         return opts, scheduler
 
     def get_last_layer(self):
