@@ -69,10 +69,14 @@ class LPIPSWithDiscriminator(nn.Module):
         d_weight = d_weight * self.discriminator_weight
         return d_weight, gnorm_nll.detach(), gnorm_g.detach()
 
-    def calculate_r1_penalty(self, logits_real):
-        grad_params = torch.autograd.grad(outputs=logits_real.float().mean(),
-                                          inputs=self.discriminator.parameters(),
-                                          create_graph=True)
+    def calculate_r1_penalty(self, images_real, logits_real):
+        gradients = torch.autograd.grad(outputs=logits_real.float(),
+                                        inputs=images_real,
+                                        grad_outputs=torch.ones(logits_real.size(), device=images_real.device),
+                                        create_graph=True)[0]
+
+        gradients = gradients.reshape(images_real.shape[0], -1)
+        return ((gradients.norm(2, dim=1) - 1) ** 2).mean() / 2.
 
         grad_norm = 0
         for grad in grad_params:
