@@ -180,7 +180,10 @@ class DDIMSampler(object):
 
             n_guidance_scales = len(unconditional_conditioning)
             n_stages = n_guidance_scales + 1
-            assert len(unconditional_guidance_scale) == n_guidance_scales
+            if len(unconditional_guidance_scale) != len(unconditional_conditioning):
+                raise ValueError(
+                    f"got {len(unconditional_conditioning)} conditioning inputs but {len(unconditional_guidance_scale)} scales"
+                )
 
             x_in = torch.cat([x] * n_stages)
             t_in = torch.cat([t] * n_stages)
