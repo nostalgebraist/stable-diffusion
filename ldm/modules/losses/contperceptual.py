@@ -183,9 +183,11 @@ class LPIPSWithDiscriminator(nn.Module):
         if optimizer_idx == 1:
             # second pass for discriminator update
             if cond is None:
+                images_real = inputs.contiguous().detach()
                 logits_real = self.discriminator(inputs.contiguous().detach())
                 logits_fake = self.discriminator(reconstructions.contiguous().detach())
             else:
+                images_real = torch.cat((inputs.contiguous().detach(), cond), dim=1)
                 logits_real = self.discriminator(torch.cat((inputs.contiguous().detach(), cond), dim=1))
                 logits_fake = self.discriminator(torch.cat((reconstructions.contiguous().detach(), cond), dim=1))
 
@@ -198,7 +200,7 @@ class LPIPSWithDiscriminator(nn.Module):
             penalty = 0.0
 
             if self.r1_weight > 0:
-                penalty = self.r1_weight * self.calculate_r1_penalty(logits_real)
+                penalty = self.r1_weight * self.calculate_r1_penalty(images_real, logits_real)
                 d_loss = d_loss + penalty
 
             log = {"{}/disc_loss".format(split): d_loss_base.clone().detach().mean(),
