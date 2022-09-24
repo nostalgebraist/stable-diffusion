@@ -295,6 +295,9 @@ class AutoencoderKL(pl.LightningModule):
                  monitor=None,
                  beta1=0.5,
                  beta2=0.9,
+                 beta1_d=0.5,
+                 beta2_d=0.9,
+                 lr_ratio_d=1.0,
                  scheduler_config=None,
                  decouple_d_g_steps=False,
                  g_frequency=1,
@@ -317,6 +320,8 @@ class AutoencoderKL(pl.LightningModule):
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
         self.betas = (beta1, beta2)
+        self.betas_d = (beta1_d, beta2_d)
+        self.lr_ratio_d = lr_ratio_d
 
         self.use_scheduler = scheduler_config is not None
         if self.use_scheduler:
@@ -400,6 +405,7 @@ class AutoencoderKL(pl.LightningModule):
 
     def configure_optimizers(self):
         lr = self.learning_rate
+        lr_d = self.lr_ratio_d * self.learning_rate
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.quant_conv.parameters())+
@@ -408,7 +414,7 @@ class AutoencoderKL(pl.LightningModule):
         opts = [opt_ae]
         if self.loss.use_d:
             opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
-                                        lr=lr, betas=self.betas)
+                                        lr=lr_d, betas=self.betas_d)
             opts.append(opt_disc)
         scheduler = []
         if self.use_scheduler:
