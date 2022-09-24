@@ -1308,7 +1308,11 @@ class LatentDiffusion(DDPM):
         uc = None
         if scale != 1.0:
             if self.cond_stage_key == 'caption_transcription':
-                c, uc = self.get_caption_transcription_conditioning_for_guidance(*[e[:N] for e in xc])
+                include_caption_only_step = isinstance(scale, tuple) or isinstance(scale, list)
+                c, uc = self.get_caption_transcription_conditioning_for_guidance(
+                    *[e[:N] for e in xc],
+                    include_caption_only_step=include_caption_only_step,
+                )
             else:
                 uc = self.get_learned_conditioning(N * [""])
 
@@ -1459,22 +1463,32 @@ class LatentDiffusion(DDPM):
         self, captions, transcriptions,
         caption_drop_string="",
         transcription_drop_string="<mask><mask><mask><mask>",
+        include_caption_only_step=False
     ):
         bs = len(captions)
 
         uc_captions = bs * [caption_drop_string]
         uc_transcriptions = bs * [transcription_drop_string]
 
-        full_in = (captions + uc_captions, transcriptions + uc_transcriptions)
+        if include_caption_only_step:
+            full_in = (
+                captions + captions + uc_captions,
+                transcriptions + uc_transcriptions + uc_transcriptions
+            )
+        else:
+            full_in = (captions + uc_captions, transcriptions + uc_transcriptions)
 
         full_c = self.get_learned_conditioning(full_in)
 
-        c, uc = {}, {}
+        c, uc = {}, [{}] * (1 + include_caption_only_step)
 
         for k in full_c:
-            c[k], uc[k] = torch.split(full_c[k], bs)
+            segments = torch.split(full_c[k], bs)
+            c[k] = segments[0]
+            for j, uc_segment in enumerate(segments[1:]):
+                uc[j][k] = uc_segment
 
-        return c, uc
+        return c, tuple(uc)
 
 
 class DiffusionWrapper(pl.LightningModule):
