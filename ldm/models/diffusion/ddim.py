@@ -175,7 +175,7 @@ class DDIMSampler(object):
         if unconditional_conditioning is None or unconditional_guidance_scale == (1.,):
             e_t = self.model.apply_model(x, t, c)
         else:
-            if isinstance(unconditional_conditioning, dict):
+            if isinstance(unconditional_conditioning, dict) or isinstance(unconditional_conditioning, torch.Tensor):
                 unconditional_conditioning = (unconditional_conditioning,)
 
             n_guidance_scales = len(unconditional_conditioning)
