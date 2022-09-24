@@ -20,6 +20,7 @@ class LPIPSWithDiscriminator(nn.Module):
                  scale_g_loss=False,
                  reduce_all=False,
                  hinge_cut=0.0,
+                 r1_weight=0.0,
                  ):
         super().__init__()
         assert disc_loss in ["hinge", "vanilla"]
@@ -49,6 +50,7 @@ class LPIPSWithDiscriminator(nn.Module):
         self.reduce_all = reduce_all
 
         self.hinge_cut = hinge_cut
+        self.r1_weight = r1_weight
 
     def calculate_adaptive_weight(self, nll_loss, g_loss, last_layer=None, g_scale_factor=1.0):
         if last_layer is not None:
@@ -66,6 +68,17 @@ class LPIPSWithDiscriminator(nn.Module):
         d_weight = torch.clamp(d_weight, 0.0, 1e4).detach()
         d_weight = d_weight * self.discriminator_weight
         return d_weight, gnorm_nll.detach(), gnorm_g.detach()
+
+    def calculate_r1_penalty(self, logits_real):
+        grad_params = torch.autograd.grad(outputs=logits_real.float().mean(),
+                                          inputs=self.discriminator.parameters(),
+                                          create_graph=True)
+
+        grad_norm = 0
+        for grad in grad_params:
+            grad_norm += grad.pow(2).sum()
+        grad_norm = grad_norm.sqrt()
+        return grad_norm / 2.
 
     def forward(self, inputs, reconstructions, posteriors, optimizer_idx,
                 global_step, last_layer=None, cond=None, split="train",
@@ -175,10 +188,19 @@ class LPIPSWithDiscriminator(nn.Module):
             logits_real, logits_fake = logits_real.float(), logits_fake.float()
 
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
-            d_loss = disc_factor * self.disc_loss(logits_real, logits_fake)
+            d_loss_base = disc_factor * self.disc_loss(logits_real, logits_fake)
 
-            log = {"{}/disc_loss".format(split): d_loss.clone().detach().mean(),
+            d_loss = d_loss_base
+            penalty = 0.0
+
+            if self.r1_weight > 0:
+                penalty = self.r1_weight * self.calculate_r1_penalty(logits_real)
+                d_loss = d_loss + penalty
+
+            log = {"{}/disc_loss".format(split): d_loss_base.clone().detach().mean(),
                    "{}/logits_real".format(split): logits_real.detach().mean(),
                    "{}/logits_fake".format(split): logits_fake.detach().mean()
                    }
+            if self.r1_weight > 0.0:
+               log["{}/r1_penalty".format(split)] = penalty.clone().detach().mean()
             return d_loss, log
