@@ -76,13 +76,7 @@ class LPIPSWithDiscriminator(nn.Module):
                                         create_graph=True)[0]
 
         gradients = gradients.reshape(images_real.shape[0], -1)
-        return ((gradients.norm(2, dim=1) - 1) ** 2).mean() / 2.
-
-        grad_norm = 0
-        for grad in grad_params:
-            grad_norm += grad.pow(2).sum()
-        grad_norm = grad_norm.sqrt()
-        return grad_norm / 2.
+        return ((gradients.norm(2, dim=1)) ** 2).mean() / 2.
 
     def forward(self, inputs, reconstructions, posteriors, optimizer_idx,
                 global_step, last_layer=None, cond=None, split="train",
