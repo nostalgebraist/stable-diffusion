@@ -179,7 +179,7 @@ class PLMSSampler(object):
         if isinstance(unconditional_guidance_scale, float) or isinstance(unconditional_guidance_scale, int):
             unconditional_guidance_scale = (unconditional_guidance_scale,)
 
-        if isinstance(unconditional_conditioning, dict):
+        if isinstance(unconditional_conditioning, dict) or isinstance(unconditional_conditioning, torch.Tensor):
             unconditional_conditioning = (unconditional_conditioning,)
 
         def get_model_output(x, t):
