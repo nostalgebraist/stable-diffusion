@@ -104,22 +104,24 @@ class Upsample(nn.Module):
                  upsampling occurs in the inner-two dimensions.
     """
 
-    def __init__(self, channels, use_conv, dims=2, out_channels=None, padding=1, use_checkpoint=False):
+    def __init__(self, channels, use_conv, dims=2, out_channels=None, padding=1, use_checkpoint_for_activations=False):
         super().__init__()
         self.channels = channels
         self.out_channels = out_channels or channels
         self.use_conv = use_conv
         self.dims = dims
-        self.use_checkpoint = use_checkpoint
+        self.use_checkpoint_for_activations = use_checkpoint_for_activations
         if use_conv:
             self.conv = conv_nd(dims, self.channels, self.out_channels, 3, padding=padding)
 
     def forward(self, x):
-        return checkpoint(
-            self._forward, (x,), self.parameters(), self.use_checkpoint
+        x = checkpoint(
+            self.interpolate, (x,), self.parameters(), self.use_checkpoint_for_activations
         )
+        x = self.convolve(x)
+        return x
 
-    def _forward(self, x):
+    def interpolate(self, x):
         assert x.shape[1] == self.channels
         if self.dims == 3:
             x = F.interpolate(
@@ -127,9 +129,13 @@ class Upsample(nn.Module):
             )
         else:
             x = F.interpolate(x, scale_factor=2, mode="nearest")
+        return x
+
+    def convolve(self, x):
         if self.use_conv:
             x = self.conv(x)
         return x
+
 
 class TransposedUpsample(nn.Module):
     'Learned 2x upsampling without padding'
@@ -153,13 +159,13 @@ class Downsample(nn.Module):
                  downsampling occurs in the inner-two dimensions.
     """
 
-    def __init__(self, channels, use_conv, dims=2, out_channels=None, padding=1, use_checkpoint=False):
+    def __init__(self, channels, use_conv, dims=2, out_channels=None, padding=1, use_checkpoint_for_activations=False):
         super().__init__()
         self.channels = channels
         self.out_channels = out_channels or channels
         self.use_conv = use_conv
         self.dims = dims
-        self.use_checkpoint = use_checkpoint
+        self.use_checkpoint = use_checkpoint_for_activations and not use_conv
         stride = 2 if dims != 3 else (1, 2, 2)
         if use_conv:
             self.op = conv_nd(
@@ -230,11 +236,11 @@ class ResBlock(TimestepBlock):
         self.updown = up or down
 
         if up:
-            self.h_upd = Upsample(channels, False, dims, use_checkpoint=self.use_checkpoint_for_activations)
-            self.x_upd = Upsample(channels, False, dims, use_checkpoint=self.use_checkpoint_for_activations)
+            self.h_upd = Upsample(channels, False, dims, use_checkpoint_for_activations=self.use_checkpoint_for_activations)
+            self.x_upd = Upsample(channels, False, dims, use_checkpoint_for_activations=self.use_checkpoint_for_activations)
         elif down:
-            self.h_upd = Downsample(channels, False, dims, use_checkpoint=self.use_checkpoint_for_activations)
-            self.x_upd = Downsample(channels, False, dims, use_checkpoint=self.use_checkpoint_for_activations)
+            self.h_upd = Downsample(channels, False, dims, use_checkpoint_for_activations=self.use_checkpoint_for_activations)
+            self.x_upd = Downsample(channels, False, dims, use_checkpoint_for_activations=self.use_checkpoint_for_activations)
         else:
             self.h_upd = self.x_upd = nn.Identity()
 
@@ -619,7 +625,8 @@ class UNetModel(nn.Module):
                         )
                         if resblock_updown
                         else Downsample(
-                            ch, conv_resample, dims=dims, out_channels=out_ch
+                            ch, conv_resample, dims=dims, out_channels=out_ch,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations
                         )
                     )
                 )
@@ -741,7 +748,10 @@ class UNetModel(nn.Module):
                             up=True,
                         )
                         if resblock_updown
-                        else Upsample(ch, conv_resample, dims=dims, out_channels=out_ch)
+                        else Upsample(
+                            ch, conv_resample, dims=dims, out_channels=out_ch,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations
+                        )
                     )
                     ds //= 2
                 self.output_blocks.append(TimestepEmbedSequential(*layers))
