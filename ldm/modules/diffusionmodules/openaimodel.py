@@ -16,6 +16,7 @@ from ldm.modules.diffusionmodules.util import (
     zero_module,
     normalization,
     timestep_embedding,
+    SiLU,
 )
 from ldm.modules.attention import SpatialTransformer
 
@@ -192,6 +193,7 @@ class ResBlock(TimestepBlock):
         use_scale_shift_norm=False,
         dims=2,
         use_checkpoint=False,
+        use_checkpoint_for_activations=False,
         up=False,
         down=False,
     ):
@@ -202,11 +204,12 @@ class ResBlock(TimestepBlock):
         self.out_channels = out_channels or channels
         self.use_conv = use_conv
         self.use_checkpoint = use_checkpoint
+        self.use_checkpoint_for_activations = use_checkpoint_for_activations
         self.use_scale_shift_norm = use_scale_shift_norm
 
         self.in_layers = nn.Sequential(
             normalization(channels),
-            nn.SiLU(),
+            SiLU(use_checkpoint=self.use_checkpoint_for_activations),
             conv_nd(dims, channels, self.out_channels, 3, padding=1),
         )
 
@@ -222,7 +225,7 @@ class ResBlock(TimestepBlock):
             self.h_upd = self.x_upd = nn.Identity()
 
         self.emb_layers = nn.Sequential(
-            nn.SiLU(),
+            SiLU(use_checkpoint=self.use_checkpoint_for_activations),
             linear(
                 emb_channels,
                 2 * self.out_channels if use_scale_shift_norm else self.out_channels,
@@ -230,7 +233,7 @@ class ResBlock(TimestepBlock):
         )
         self.out_layers = nn.Sequential(
             normalization(self.out_channels),
-            nn.SiLU(),
+            SiLU(use_checkpoint=self.use_checkpoint_for_activations),
             nn.Dropout(p=dropout),
             zero_module(
                 conv_nd(dims, self.out_channels, self.out_channels, 3, padding=1)
@@ -460,6 +463,7 @@ class UNetModel(nn.Module):
         dims=2,
         num_classes=None,
         use_checkpoint=False,
+        use_checkpoint_for_activations=False,
         use_fp16=False,
         num_heads=-1,
         num_head_channels=-1,
@@ -512,10 +516,12 @@ class UNetModel(nn.Module):
         self.num_heads_upsample = num_heads_upsample
         self.predict_codebook_ids = n_embed is not None
 
+        use_checkpoint_for_activations = use_checkpoint_for_activations or use_checkpoint
+
         time_embed_dim = model_channels * 4
         self.time_embed = nn.Sequential(
             linear(model_channels, time_embed_dim),
-            nn.SiLU(),
+            SiLU(use_checkpoint=use_checkpoint_for_activations),
             linear(time_embed_dim, time_embed_dim),
         )
 
@@ -543,6 +549,7 @@ class UNetModel(nn.Module):
                         out_channels=mult * model_channels,
                         dims=dims,
                         use_checkpoint=use_checkpoint,
+                        use_checkpoint_for_activations=use_checkpoint_for_activations,
                         use_scale_shift_norm=use_scale_shift_norm,
                     )
                 ]
@@ -592,6 +599,7 @@ class UNetModel(nn.Module):
                             out_channels=out_ch,
                             dims=dims,
                             use_checkpoint=use_checkpoint,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations,
                             use_scale_shift_norm=use_scale_shift_norm,
                             down=True,
                         )
@@ -630,6 +638,7 @@ class UNetModel(nn.Module):
                 dropout,
                 dims=dims,
                 use_checkpoint=use_checkpoint,
+                use_checkpoint_for_activations=use_checkpoint_for_activations,
                 use_scale_shift_norm=use_scale_shift_norm,
             ),
             AttentionBlock(
@@ -649,6 +658,7 @@ class UNetModel(nn.Module):
                 dropout,
                 dims=dims,
                 use_checkpoint=use_checkpoint,
+                use_checkpoint_for_activations=use_checkpoint_for_activations,
                 use_scale_shift_norm=use_scale_shift_norm,
             ),
         )
@@ -666,6 +676,7 @@ class UNetModel(nn.Module):
                         out_channels=model_channels * mult,
                         dims=dims,
                         use_checkpoint=use_checkpoint,
+                        use_checkpoint_for_activations=use_checkpoint_for_activations,
                         use_scale_shift_norm=use_scale_shift_norm,
                     )
                 ]
@@ -711,6 +722,7 @@ class UNetModel(nn.Module):
                             out_channels=out_ch,
                             dims=dims,
                             use_checkpoint=use_checkpoint,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations,
                             use_scale_shift_norm=use_scale_shift_norm,
                             up=True,
                         )
@@ -723,7 +735,7 @@ class UNetModel(nn.Module):
 
         self.out = nn.Sequential(
             normalization(ch),
-            nn.SiLU(),
+            SiLU(use_checkpoint=use_checkpoint_for_activations),
             zero_module(conv_nd(dims, model_channels, out_channels, 3, padding=1)),
         )
         if self.predict_codebook_ids:
@@ -836,7 +848,7 @@ class EncoderUNetModel(nn.Module):
         time_embed_dim = model_channels * 4
         self.time_embed = nn.Sequential(
             linear(model_channels, time_embed_dim),
-            nn.SiLU(),
+            SiLU(),
             linear(time_embed_dim, time_embed_dim),
         )
 
@@ -933,7 +945,7 @@ class EncoderUNetModel(nn.Module):
         if pool == "adaptive":
             self.out = nn.Sequential(
                 normalization(ch),
-                nn.SiLU(),
+                SiLU(),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 zero_module(conv_nd(dims, ch, out_channels, 1)),
                 nn.Flatten(),
@@ -942,7 +954,7 @@ class EncoderUNetModel(nn.Module):
             assert num_head_channels != -1
             self.out = nn.Sequential(
                 normalization(ch),
-                nn.SiLU(),
+                SiLU(),
                 AttentionPool2d(
                     (image_size // ds), ch, num_head_channels, out_channels
                 ),
@@ -957,7 +969,7 @@ class EncoderUNetModel(nn.Module):
             self.out = nn.Sequential(
                 nn.Linear(self._feature_size, 2048),
                 normalization(2048),
-                nn.SiLU(),
+                SiLU(),
                 nn.Linear(2048, self.out_channels),
             )
         else:
