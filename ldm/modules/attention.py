@@ -62,8 +62,8 @@ class GEGLU(nn.Module):
 
     def forward(self, x):
         x, gate = self.project(x)
-        x = checkpoint(self.actfn, (x, gate), self.parameters(), self.use_checkpoint)
-        return x * F.gelu(gate)
+        x = checkpoint(self.actfn, (x, gate), tuple(), self.use_checkpoint)
+        return x
 
 
 class FeedForward(nn.Module):
