@@ -216,6 +216,8 @@ class ResBlock(TimestepBlock):
         self.out_channels = out_channels or channels
         self.use_conv = use_conv
         self.use_checkpoint = use_checkpoint
+        if self.use_checkpoint:
+            use_checkpoint_for_activations = False  # avoid nested checkpointing
         self.use_checkpoint_for_activations = use_checkpoint_for_activations
         self.use_scale_shift_norm = use_scale_shift_norm
 
