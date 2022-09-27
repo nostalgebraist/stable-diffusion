@@ -43,6 +43,7 @@ model:
         transformer_depth: 1
         context_dim: 768
         use_checkpoint: False
+        use_checkpoint_for_activations: True
         legacy: False
 
     first_stage_config:
