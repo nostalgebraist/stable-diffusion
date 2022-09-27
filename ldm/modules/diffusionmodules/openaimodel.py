@@ -602,6 +602,7 @@ class UNetModel(nn.Module):
                         ) if not use_spatial_transformer else st_cls(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations,
                             **st_kwargs,
                         )
                     )
@@ -671,6 +672,7 @@ class UNetModel(nn.Module):
             ) if not use_spatial_transformer else st_cls(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations,
                             **st_kwargs,
                         ),
             ResBlock(
@@ -730,6 +732,7 @@ class UNetModel(nn.Module):
                         ) if not use_spatial_transformer else st_cls(
                             ch, num_heads, dim_head, depth=transformer_depth, context_dim=context_dim,
                             checkpoint=use_checkpoint,
+                            use_checkpoint_for_activations=use_checkpoint_for_activations,
                             **st_kwargs
                         )
                     )

@@ -35,26 +35,46 @@ def init_(tensor):
     return tensor
 
 
-# feedforward
-class GEGLU(nn.Module):
-    def __init__(self, dim_in, dim_out):
+class GELU(nn.GELU):
+    def __init__(self, use_checkpoint=False):
         super().__init__()
-        self.proj = nn.Linear(dim_in, dim_out * 2)
+        self.use_checkpoint = use_checkpoint
 
     def forward(self, x):
+        return checkpoint(
+            super().forward, (x,), self.parameters(), self.use_checkpoint
+        )
+
+
+# feedforward
+class GEGLU(nn.Module):
+    def __init__(self, dim_in, dim_out, use_checkpoint=False):
+        super().__init__()
+        self.proj = nn.Linear(dim_in, dim_out * 2)
+        self.use_checkpoint = use_checkpoint
+
+    def project(self, x):
         x, gate = self.proj(x).chunk(2, dim=-1)
+        return x, gate
+
+    def actfn(self, x, gate):
+        return x * F.gelu(gate)
+
+    def forward(self, x):
+        x, gate = self.project(x)
+        x = checkpoint(self.actfn, (x, gate), tuple(), self.use_checkpoint)
         return x * F.gelu(gate)
 
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, dim_out=None, mult=4, glu=False, dropout=0.):
+    def __init__(self, dim, dim_out=None, mult=4, glu=False, dropout=0., use_checkpoint=False):
         super().__init__()
         inner_dim = int(dim * mult)
         dim_out = default(dim_out, dim)
         project_in = nn.Sequential(
             nn.Linear(dim, inner_dim),
-            nn.GELU()
-        ) if not glu else GEGLU(dim, inner_dim)
+            nn.GELU(use_checkpoint=use_checkpoint)
+        ) if not glu else GEGLU(dim, inner_dim, use_checkpoint=use_checkpoint)
 
         self.net = nn.Sequential(
             project_in,
@@ -214,10 +234,13 @@ class BasicTransformerBlock(nn.Module):
         pos_emb_size=None,
         use_pos_emb=False,
         checkpoint=True,
+        use_checkpoint_for_activations=False,
     ):
         super().__init__()
+        use_checkpoint_for_activations = use_checkpoint_for_activations and not checkpoint
+
         self.attn1 = CrossAttention(query_dim=dim, heads=n_heads, dim_head=d_head, dropout=dropout)  # is a self-attention
-        self.ff = FeedForward(dim, dropout=dropout, glu=gated_ff)
+        self.ff = FeedForward(dim, dropout=dropout, glu=gated_ff, use_checkpoint=use_checkpoint_for_activations)
         self.attn2 = CrossAttention(query_dim=dim, context_dim=context_dim,
                                     heads=n_heads, dim_head=d_head, dropout=dropout)  # is self-attn if context is none
         self.norm1 = OAStyleLayerNorm(dim)
@@ -264,7 +287,8 @@ class SpatialTransformer(nn.Module):
                  transcription_context_dim=None,
                  use_pos_emb=False,
                  pos_emb_size=None,
-                 checkpoint=True,):
+                 checkpoint=True,
+                 use_checkpoint_for_activations=False,):
         super().__init__()
         self.in_channels = in_channels
         inner_dim = n_heads * d_head
@@ -283,7 +307,8 @@ class SpatialTransformer(nn.Module):
                 transcription_context_dim=transcription_context_dim,
                 use_pos_emb=use_pos_emb,
                 pos_emb_size=pos_emb_size,
-                checkpoint=checkpoint
+                checkpoint=checkpoint,
+                use_checkpoint_for_activations=use_checkpoint_for_activations,
             )
             for d in range(depth)]
         )
