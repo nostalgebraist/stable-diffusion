@@ -202,8 +202,10 @@ class DDPM(pl.LightningModule):
             self.model_ema = LitEma(self.model, decay=self.ema_decay, warmup_rate=self.ema_warmup_rate)
         soft_restart_ema = self.soft_restart_ema and self.use_ema
         if soft_restart_ema:
-            print("Setting EMA num_updates to 0")
+            nu = int((0.99 * self.model_ema.warmup_rate - 1)/(1-0.99))
+            print(f"Setting EMA num_updates to {nu}")
             self.model_ema.num_updates *= 0
+            self.model_ema.num_updates += int()
         return missing, unexpected
 
     def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
