@@ -205,7 +205,7 @@ class DDPM(pl.LightningModule):
             nu = int((0.99 * self.model_ema.warmup_rate - 1)/(1-0.99))
             print(f"Setting EMA num_updates to {nu}")
             self.model_ema.num_updates *= 0
-            self.model_ema.num_updates += int()
+            self.model_ema.num_updates += nu
         return missing, unexpected
 
     def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
