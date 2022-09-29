@@ -200,6 +200,10 @@ class DDPM(pl.LightningModule):
             print("Recreating EMA")
             del self.model_ema
             self.model_ema = LitEma(self.model, decay=self.ema_decay, warmup_rate=self.ema_warmup_rate)
+        soft_restart_ema = self.soft_restart_ema and self.use_ema
+        if soft_restart_ema:
+            print("Setting EMA num_updates to 0")
+            self.model_ema.num_updates *= 0
         return missing, unexpected
 
     def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
@@ -455,6 +459,7 @@ class LatentDiffusion(DDPM):
                  scale_factor=1.0,
                  scale_by_std=False,
                  restart_ema=False,
+                 soft_restart_ema=False,
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
@@ -490,6 +495,9 @@ class LatentDiffusion(DDPM):
             self.restarted_from_ckpt = True
 
         self.restart_ema = restart_ema
+        self.soft_restart_ema = soft_restart_ema
+        if restart_ema and soft_restart_ema:
+            raise ValueError
 
     def make_cond_schedule(self, ):
         self.cond_ids = torch.full(size=(self.num_timesteps,), fill_value=self.num_timesteps - 1, dtype=torch.long)
