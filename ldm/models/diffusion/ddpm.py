@@ -118,7 +118,7 @@ class DDPM(pl.LightningModule):
         if self.learn_logvar:
             self.logvar = nn.Parameter(logvar, requires_grad=True)
         else:
-            self.register_buffer('logvar', logvar)
+            self.register_buffer('logvar', logvar, persistent=False)
 
 
     def register_schedule(self, given_betas=None, beta_schedule="linear", timesteps=1000,
