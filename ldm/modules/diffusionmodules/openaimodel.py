@@ -123,13 +123,16 @@ class Upsample(nn.Module):
 
     def interpolate(self, x):
         assert x.shape[1] == self.channels
+        orig_dtype = x.dtype
+        if orig_dtype == torch.bfloat16:
+            x = x.float()
         if self.dims == 3:
             x = F.interpolate(
                 x, (x.shape[2], x.shape[3] * 2, x.shape[4] * 2), mode="nearest"
             )
         else:
             x = F.interpolate(x, scale_factor=2, mode="nearest")
-        return x
+        return x.to(orig_dtype)
 
     def convolve(self, x):
         if self.use_conv:
