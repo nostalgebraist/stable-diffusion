@@ -124,7 +124,7 @@ class Upsample(nn.Module):
     def interpolate(self, x):
         assert x.shape[1] == self.channels
         orig_dtype = x.dtype
-        if orig_dtype == torch.bfloat16:
+        if orig_dtype == th.bfloat16:
             x = x.float()
         if self.dims == 3:
             x = F.interpolate(
