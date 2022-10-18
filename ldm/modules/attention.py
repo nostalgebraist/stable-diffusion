@@ -260,6 +260,14 @@ class BasicTransformerBlock(nn.Module):
         self.checkpoint = checkpoint
 
     def forward(self, x, context=None, transcription=None, transcription_mask=None):
+        # avoid None in CheckpointFunction
+        if transcription is not None:
+            args = (x, context, transcription, transcription_mask)
+        elif context is not None:
+            args = (x, context)
+        else:
+            args = (x,)
+
         return checkpoint(self._forward, (x, context, transcription, transcription_mask), self.parameters(), self.checkpoint)
 
     def _forward(self, x, context=None, transcription=None, transcription_mask=None):
