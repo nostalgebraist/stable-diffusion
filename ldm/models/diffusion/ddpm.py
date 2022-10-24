@@ -503,6 +503,8 @@ class LatentDiffusion(DDPM):
         if restart_ema and soft_restart_ema:
             raise ValueError
 
+        self.shapes_seen = set()
+
     def make_cond_schedule(self, ):
         self.cond_ids = torch.full(size=(self.num_timesteps,), fill_value=self.num_timesteps - 1, dtype=torch.long)
         ids = torch.round(torch.linspace(0, self.num_timesteps - 1, self.num_timesteps_cond)).long()
@@ -511,6 +513,10 @@ class LatentDiffusion(DDPM):
     @rank_zero_only
     @torch.no_grad()
     def on_train_batch_start(self, batch, batch_idx, *args, **kwargs):
+        bshape = tuple(batch.shape)
+        if bshape not in self.shapes_seen:
+            torch.cuda.empty_cache()  # ensure cache freed after each cudnn benchmark
+            self.shapes_seen.add(bshape)
         # only for very first batch
         if self.scale_by_std and self.current_epoch == 0 and self.global_step == 0 and batch_idx == 0 and not self.restarted_from_ckpt:
             assert self.scale_factor == 1., 'rather not use custom rescaling and std-rescaling simultaneously'
