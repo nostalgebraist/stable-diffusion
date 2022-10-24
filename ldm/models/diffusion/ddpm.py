@@ -513,7 +513,7 @@ class LatentDiffusion(DDPM):
     @rank_zero_only
     @torch.no_grad()
     def on_train_batch_start(self, batch, batch_idx, *args, **kwargs):
-        bshape = tuple(batch.shape)
+        bshape = tuple(batch[self.first_stage_key].shape)
         if bshape not in self.shapes_seen:
             torch.cuda.empty_cache()  # ensure cache freed after each cudnn benchmark
             self.shapes_seen.add(bshape)
