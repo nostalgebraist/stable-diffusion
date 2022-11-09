@@ -1512,10 +1512,9 @@ class LatentDiffusion(DDPM):
 def get_multiple_conditioning_for_guidance(
     self, caption_weights,
     caption_drop_string="",
-    transcription_drop_string="<mask><mask><mask><mask>",
     include_caption_only_step=False
 ):
-    full_in, weights = [], []
+    full_in, weights = [caption_drop_string], []
 
     for capt, weight in caption_weights.items():
         full_in.append(capt)
