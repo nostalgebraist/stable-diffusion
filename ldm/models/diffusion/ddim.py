@@ -76,9 +76,12 @@ class DDIMSampler(object):
                log_every_t=100,
                unconditional_guidance_scale=1.,
                unconditional_conditioning=None,
+               multi_conditioning_style='stack',
                # this has to come in the same format as the conditioning, # e.g. as encoded tokens, ...
                **kwargs
                ):
+        if multi_conditioning_style not in {'stack', 'blend'}:
+            raise ValueError(multi_conditioning_style)
         if conditioning is not None:
             if isinstance(conditioning, dict):
                 cbs = conditioning[list(conditioning.keys())[0]].shape[0]
@@ -108,6 +111,7 @@ class DDIMSampler(object):
                                                     log_every_t=log_every_t,
                                                     unconditional_guidance_scale=unconditional_guidance_scale,
                                                     unconditional_conditioning=unconditional_conditioning,
+                                                    multi_conditioning_style=multi_conditioning_style,
                                                     )
         return samples, intermediates
 
@@ -117,7 +121,8 @@ class DDIMSampler(object):
                       callback=None, timesteps=None, quantize_denoised=False,
                       mask=None, x0=None, img_callback=None, log_every_t=100,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
-                      unconditional_guidance_scale=1., unconditional_conditioning=None,):
+                      unconditional_guidance_scale=1., unconditional_conditioning=None,
+                      multi_conditioning_style='stack'):
         device = self.model.betas.device
         b = shape[0]
         if x_T is None:
@@ -152,7 +157,8 @@ class DDIMSampler(object):
                                       noise_dropout=noise_dropout, score_corrector=score_corrector,
                                       corrector_kwargs=corrector_kwargs,
                                       unconditional_guidance_scale=unconditional_guidance_scale,
-                                      unconditional_conditioning=unconditional_conditioning)
+                                      unconditional_conditioning=unconditional_conditioning,
+                                      multi_conditioning_style=multi_conditioning_style)
             img, pred_x0 = outs
             if callback: callback(i)
             if img_callback: img_callback(pred_x0, i)
@@ -166,7 +172,8 @@ class DDIMSampler(object):
     @torch.no_grad()
     def p_sample_ddim(self, x, c, t, index, repeat_noise=False, use_original_steps=False, quantize_denoised=False,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
-                      unconditional_guidance_scale=1., unconditional_conditioning=None):
+                      unconditional_guidance_scale=1., unconditional_conditioning=None,
+                      multi_conditioning_style='stack',):
         b, *_, device = *x.shape, x.device
 
         if isinstance(unconditional_guidance_scale, float) or isinstance(unconditional_guidance_scale, int):
@@ -194,9 +201,15 @@ class DDIMSampler(object):
                 c_in = torch.cat([*unconditional_conditioning, c])
 
             stages = self.model.apply_model(x_in, t_in, c_in).chunk(n_stages)
-            e_t = stages[0]  # fully uncond
+            e_t_uncond = stages[0]
+            e_t = e_t_uncond
             for scale, stage1, stage2 in zip(unconditional_guidance_scale, stages[:-1], stages[1:]):
-                e_t = e_t + scale * (stage2 - stage1)
+                if multi_conditioning_style == 'stack':
+                    e_t = e_t + scale * (stage2 - stage1)
+                elif multi_conditioning_style == 'blend':
+                    e_t = e_t + scale * (stage2 - e_t_uncond)
+                else:
+                    raise ValueError
 
         if score_corrector is not None:
             assert self.model.parameterization == "eps"
