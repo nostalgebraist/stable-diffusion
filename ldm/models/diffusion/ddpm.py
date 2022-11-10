@@ -1509,30 +1509,30 @@ class LatentDiffusion(DDPM):
         return c, tuple(uc)
 
 
-def get_multiple_conditioning_for_guidance(
-    self, caption_weights,
-    caption_drop_string="",
-    include_caption_only_step=False
-):
-    full_in, weights = [caption_drop_string], []
+    def get_multiple_conditioning_for_guidance(
+        self, caption_weights,
+        caption_drop_string="",
+        include_caption_only_step=False
+    ):
+        full_in, weights = [caption_drop_string], []
 
-    for capt, weight in caption_weights.items():
-        full_in.append(capt)
-        weights.append(weight)
+        for capt, weight in caption_weights.items():
+            full_in.append(capt)
+            weights.append(weight)
 
-    bs = len(full_in[0])
+        bs = len(full_in[0])
 
-    full_c = self.get_learned_conditioning(full_in)
+        full_c = self.get_learned_conditioning(full_in)
 
-    c, uc = {}, [{}] * (1 + include_caption_only_step)
+        c, uc = {}, [{}] * (1 + include_caption_only_step)
 
-    for k in full_c:
-        segments = torch.split(full_c[k], bs)
-        c[k] = segments[0]
-        for j, uc_segment in enumerate(segments[1:]):
-            uc[j][k] = uc_segment
+        for k in full_c:
+            segments = torch.split(full_c[k], bs)
+            c[k] = segments[0]
+            for j, uc_segment in enumerate(segments[1:]):
+                uc[j][k] = uc_segment
 
-    return c, tuple(uc)
+        return c, tuple(uc)
 
 
 class DiffusionWrapper(pl.LightningModule):
