@@ -1510,30 +1510,38 @@ class LatentDiffusion(DDPM):
 
 
     def get_multiple_conditioning_for_guidance(
-        self, caption_weights,
+        self, captions,
         caption_drop_string="",
         include_caption_only_step=False
     ):
-        full_in, weights = [caption_drop_string], []
+        bs = len(captions[0])
+        print(bs)
 
-        for capt, weight in caption_weights.items():
-            full_in.append(capt)
-            weights.append(weight)
+        full_in = bs * [caption_drop_string]
 
-        bs = len(full_in[0])
+        for capt in captions:
+            full_in.extend(capt)
 
         full_c = self.get_learned_conditioning(full_in)
 
-        c, uc = {}, [{}] * (1 + include_caption_only_step)
+        print(len(full_in))
 
-        for k in full_c:
-            segments = torch.split(full_c[k], bs)
-            c[k] = segments[0]
-            for j, uc_segment in enumerate(segments[1:]):
-                uc[j][k] = uc_segment
+        print(full_c.shape)
+
+        c, uc = {}, []
+
+        segments = torch.split(full_c, bs)
+        c = segments[0]
+        for j, uc_segment in enumerate(segments[1:]):
+            uc.append(uc_segment)
+
+        print(c.shape)
+
+        print(len(uc))
+        for t in uc:
+            print(t)
 
         return c, tuple(uc)
-
 
 class DiffusionWrapper(pl.LightningModule):
     def __init__(self, diff_model_config, conditioning_key):
